@@ -26,4 +26,11 @@ export const organizationsRepository = {
       body: JSON.stringify(body),
     });
   },
+
+  update(id: string, body: { name: string; description?: string | null }) {
+    return apiJson<OrganizationEntityBody>(`/api/organizations/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    });
+  },
 };

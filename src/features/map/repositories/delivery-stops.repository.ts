@@ -20,4 +20,10 @@ export const deliveryStopsRepository = {
       body: JSON.stringify(body),
     });
   },
+
+  delete(id: string) {
+    return apiJson<unknown>(`/api/deliverystops/${id}`, {
+      method: "DELETE",
+    });
+  },
 };

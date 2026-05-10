@@ -36,6 +36,7 @@ export function UsersPageView({ viewState, actions }: UsersPageViewModel) {
     isAdmin,
     users,
     roles,
+    organizations,
     usersLoading,
     dialogOpen,
     userName,
@@ -44,13 +45,17 @@ export function UsersPageView({ viewState, actions }: UsersPageViewModel) {
     password,
     passwordConfirm,
     roleId,
+    selectedRoleIsAdmin,
+    addOrganizationIds,
     addPending,
     usersError,
     editOpen,
+    editUserIsAdmin,
     editEmail,
     editPhone,
     editDisplayName,
     editLocked,
+    editOrganizationIds,
     updatePending,
   } = viewState;
 
@@ -95,7 +100,9 @@ export function UsersPageView({ viewState, actions }: UsersPageViewModel) {
             <Card key={u.id}>
               <CardHeader className="space-y-3">
                 <div className="flex items-start justify-between gap-2">
-                  <CardTitle className="text-base leading-tight">{u.userName}</CardTitle>
+                  <CardTitle className="text-base leading-tight">
+                    {u.userName}
+                  </CardTitle>
                   <Button
                     type="button"
                     variant="outline"
@@ -121,6 +128,23 @@ export function UsersPageView({ viewState, actions }: UsersPageViewModel) {
                       </Badge>
                     ) : null}
                   </span>
+                  {organizations && u.organizationIds?.length ? (
+                    <span className="flex flex-wrap gap-1 pt-1">
+                      {u.organizationIds.map((oid) => {
+                        const name =
+                          organizations.find((o) => o.id === oid)?.name ?? oid;
+                        return (
+                          <Badge
+                            key={oid}
+                            variant="outline"
+                            className="text-xs font-normal"
+                          >
+                            {name}
+                          </Badge>
+                        );
+                      })}
+                    </span>
+                  ) : null}
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -129,11 +153,11 @@ export function UsersPageView({ viewState, actions }: UsersPageViewModel) {
       )}
 
       <Dialog open={dialogOpen} onOpenChange={actions.setDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{t("addTitle")}</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-3">
+          <div className="grid max-h-[70vh] gap-3 overflow-y-auto pe-1">
             <div className="space-y-2">
               <Label htmlFor="u-name">{t("username")}</Label>
               <Input
@@ -178,6 +202,44 @@ export function UsersPageView({ viewState, actions }: UsersPageViewModel) {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2 border-t pt-3">
+              <Label>{t("organizationsLabel")}</Label>
+              {selectedRoleIsAdmin ? (
+                <p className="text-muted-foreground text-sm">
+                  {t("orgMembershipAdminHint")}
+                </p>
+              ) : (
+                <>
+                  <p className="text-muted-foreground text-sm">
+                    {t("orgMembershipMemberHint")}
+                  </p>
+                  {!organizations?.length ? (
+                    <p className="text-muted-foreground text-sm">
+                      {t("noOrganizationsYet")}
+                    </p>
+                  ) : (
+                    <div className="grid gap-2">
+                      {organizations.map((o) => (
+                        <label
+                          key={o.id}
+                          htmlFor={`add-org-${o.id}`}
+                          className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm"
+                        >
+                          <input
+                            id={`add-org-${o.id}`}
+                            type="checkbox"
+                            className="size-4 rounded border"
+                            checked={addOrganizationIds.includes(o.id)}
+                            onChange={() => actions.toggleAddOrg(o.id)}
+                          />
+                          <span>{o.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
             <div className="space-y-2">
               <Label htmlFor="u-pw">{tc("password")}</Label>
               <Input
@@ -213,11 +275,11 @@ export function UsersPageView({ viewState, actions }: UsersPageViewModel) {
       </Dialog>
 
       <Dialog open={editOpen} onOpenChange={actions.setEditOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{t("editTitle")}</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-3">
+          <div className="grid max-h-[70vh] gap-3 overflow-y-auto pe-1">
             <div className="space-y-2">
               <Label htmlFor="e-email">{tc("email")}</Label>
               <Input
@@ -242,6 +304,44 @@ export function UsersPageView({ viewState, actions }: UsersPageViewModel) {
                 value={editDisplayName}
                 onChange={(e) => actions.setEditDisplayName(e.target.value)}
               />
+            </div>
+            <div className="space-y-2 border-t pt-3">
+              <Label>{t("organizationsLabel")}</Label>
+              {editUserIsAdmin ? (
+                <p className="text-muted-foreground text-sm">
+                  {t("orgMembershipAdminHint")}
+                </p>
+              ) : (
+                <>
+                  <p className="text-muted-foreground text-sm">
+                    {t("orgMembershipMemberHint")}
+                  </p>
+                  {!organizations?.length ? (
+                    <p className="text-muted-foreground text-sm">
+                      {t("noOrganizationsYet")}
+                    </p>
+                  ) : (
+                    <div className="grid gap-2">
+                      {organizations.map((o) => (
+                        <label
+                          key={o.id}
+                          htmlFor={`edit-org-${o.id}`}
+                          className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm"
+                        >
+                          <input
+                            id={`edit-org-${o.id}`}
+                            type="checkbox"
+                            className="size-4 rounded border"
+                            checked={editOrganizationIds.includes(o.id)}
+                            onChange={() => actions.toggleEditOrg(o.id)}
+                          />
+                          <span>{o.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
             <div className="flex items-center gap-2 pt-1">
               <input

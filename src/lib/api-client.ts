@@ -86,6 +86,37 @@ export async function apiJson<T>(
   return parseJson<T>(res);
 }
 
+/**
+ * Authenticated GET returning raw bytes (e.g. file download).
+ * On 401, attempts one token refresh and retries.
+ */
+export async function apiBlob(path: string): Promise<Blob> {
+  const token = useAuthStore.getState().accessToken;
+
+  const exec = async (bearer: string | null) => {
+    const h = new Headers();
+    if (bearer) h.set("Authorization", `Bearer ${bearer}`);
+    return fetch(`${getApiBaseUrl()}${path}`, { method: "GET", headers: h });
+  };
+
+  let res = await exec(token);
+
+  if (res.status === 401 && token) {
+    const ok = await tryRefresh();
+    if (ok) {
+      const next = useAuthStore.getState().accessToken;
+      res = await exec(next);
+    }
+  }
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || res.statusText || "Download failed");
+  }
+
+  return res.blob();
+}
+
 /** Multipart upload — sets Authorization only (no Content-Type override). */
 export async function apiForm<T>(
   path: string,

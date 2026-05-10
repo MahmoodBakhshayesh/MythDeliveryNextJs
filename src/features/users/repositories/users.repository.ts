@@ -8,6 +8,8 @@ export type AddUserBody = {
   email?: string | null;
   phoneNumber?: string | null;
   roleId?: string | null;
+  /** Ignored by API when role is Admin. */
+  organizationIds?: string[];
 };
 
 export type AdminUpdateUserBody = {
@@ -15,6 +17,8 @@ export type AdminUpdateUserBody = {
   phoneNumber?: string | null;
   displayName?: string | null;
   lockAccount?: boolean;
+  /** Replaces org memberships; send [] for Admin users (clears links). */
+  organizationIds?: string[];
 };
 
 export const usersRepository = {

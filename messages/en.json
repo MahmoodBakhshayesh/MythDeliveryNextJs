@@ -29,6 +29,9 @@
     "organizations": "Organizations",
     "users": "Users",
     "planningMap": "Planning map",
+    "planning": "Planning",
+    "deliveries": "Deliveries",
+    "drivers": "Drivers",
     "fleet": "Fleet",
     "packages": "Packages",
     "live": "Live tracking",
@@ -90,8 +93,11 @@
     "subtitleFromApi": "From",
     "addOrganization": "Add organization",
     "dialogTitle": "New organization",
+    "editDialogTitle": "Edit organization",
     "nameLabel": "Name",
     "namePlaceholder": "Organization name",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "Optional notes about this organization",
     "create": "Create"
   },
   "UiFleet": {
@@ -127,7 +133,11 @@
     "createUser": "Create user",
     "editTitle": "Edit user",
     "displayName": "Display name",
-    "lockAccount": "Lock account (cannot sign in until unlocked)"
+    "lockAccount": "Lock account (cannot sign in until unlocked)",
+    "organizationsLabel": "Organizations",
+    "orgMembershipAdminHint": "Administrators do not need organization membership.",
+    "orgMembershipMemberHint": "Select which organizations this user can access.",
+    "noOrganizationsYet": "No organizations yet. Create one under Organizations."
   },
   "UiPackages": {
     "title": "Packages",
@@ -199,5 +209,66 @@
         "description": "Hide shaded regions; show sequence lines and stop markers only."
       }
     }
+  },
+  "UiDrivers": {
+    "title": "Drivers",
+    "subtitleFromApi": "Drivers from",
+    "addDriver": "Add driver",
+    "editDriver": "Edit driver",
+    "license": "License",
+    "licenseOptional": "License number (optional)",
+    "active": "Active",
+    "inactive": "Inactive",
+    "activeLabel": "Active driver",
+    "emptyTitle": "No drivers yet",
+    "emptyDesc": "Add a driver for this organization.",
+    "delete": "Delete driver",
+    "displayNamePlaceholder": "Driver name",
+    "phoneOptional": "Phone (optional)"
+  },
+  "UiPlanning": {
+    "title": "Planning",
+    "subtitleFromApi": "Planning windows from",
+    "addPlan": "New planning window",
+    "editPlan": "Edit planning window",
+    "openDeliveries": "Deliveries & Excel",
+    "window": "Window",
+    "emptyTitle": "No planning windows",
+    "emptyDesc": "Create a planning window to group deliveries and routes.",
+    "delete": "Delete plan",
+    "planNamePlaceholder": "e.g. Monday AM route",
+    "startsAt": "Starts",
+    "endsAt": "Ends",
+    "timeZone": "Time zone (optional)",
+    "timeZonePlaceholder": "e.g. Asia/Tehran"
+  },
+  "UiDeliveries": {
+    "title": "Deliveries",
+    "subtitle": "Delivery stops from your API — list, add manually, or import Excel.",
+    "managePlans": "Planning windows",
+    "addStop": "Add stop",
+    "planFilter": "Planning window",
+    "planPlaceholder": "Filter by plan",
+    "allPlans": "All stops (any plan)",
+    "excelTitle": "Excel import",
+    "excelDesc": "Download the template, fill rows, then upload. Optionally pick a planning window so imports attach to that plan.",
+    "downloadTemplate": "Download template",
+    "uploadExcel": "Upload Excel",
+    "importing": "Importing…",
+    "generateDraftRoutes": "Generate draft routes",
+    "generatingRoutes": "Generating…",
+    "noPlansHint": "Create a planning window under Planning before attaching imports to a specific plan.",
+    "lastImportLabel": "Last import",
+    "rowsImported": "rows imported",
+    "coordinates": "Coordinates",
+    "deleteStop": "Remove stop",
+    "emptyTitle": "No delivery stops",
+    "emptyDesc": "Add stops manually or import an Excel file.",
+    "addStopTitle": "Add delivery stop",
+    "attachToPlanHint": "This stop will be linked to the planning window selected above.",
+    "noPlanAttachHint": "No specific plan is selected — the stop will not be tied to a planning window.",
+    "latitude": "Latitude",
+    "longitude": "Longitude",
+    "serviceMinutes": "Service minutes"
   }
 }

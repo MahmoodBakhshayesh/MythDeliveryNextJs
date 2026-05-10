@@ -6,13 +6,20 @@ import { toast } from "sonner";
 import { useIsAdmin } from "@/lib/use-is-admin";
 import { addOrganizationUseCase } from "@/features/organizations/usecases/add-organization.usecase";
 import { listOrganizationsUseCase } from "@/features/organizations/usecases/list-organizations.usecase";
+import { updateOrganizationUseCase } from "@/features/organizations/usecases/update-organization.usecase";
 import { queryKeys } from "@/lib/query-keys";
+import type { OrganizationResponse } from "@/types/api";
 
 export function useOrganizationsListController() {
   const queryClient = useQueryClient();
   const isAdmin = useIsAdmin();
   const [addOpen, setAddOpen] = useState(false);
   const [newOrgName, setNewOrgName] = useState("");
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [editOrgId, setEditOrgId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
 
   const query = useQuery({
     queryKey: queryKeys.organizations,
@@ -31,6 +38,49 @@ export function useOrganizationsListController() {
       toast.error(err.message || "Could not create organization."),
   });
 
+  const updateMutation = useMutation({
+    mutationFn: (args: {
+      id: string;
+      name: string;
+      description: string | null;
+    }) =>
+      updateOrganizationUseCase(args.id, {
+        name: args.name,
+        description: args.description,
+      }),
+    onSuccess: async () => {
+      toast.success("Organization updated.");
+      setEditOpen(false);
+      setEditOrgId(null);
+      await queryClient.invalidateQueries({ queryKey: queryKeys.organizations });
+    },
+    onError: (err: Error) =>
+      toast.error(err.message || "Could not update organization."),
+  });
+
+  function openEdit(org: OrganizationResponse) {
+    setEditOrgId(org.id);
+    setEditName(org.name);
+    setEditDescription(org.description?.trim() ?? "");
+    setEditOpen(true);
+  }
+
+  function submitEdit() {
+    const id = editOrgId;
+    if (!id) return;
+    const name = editName.trim();
+    if (!name) {
+      toast.error("Name is required.");
+      return;
+    }
+    const desc = editDescription.trim();
+    updateMutation.mutate({
+      id,
+      name,
+      description: desc.length ? desc : null,
+    });
+  }
+
   return {
     viewState: {
       organizations: query.data ?? null,
@@ -43,6 +93,10 @@ export function useOrganizationsListController() {
       addOpen,
       newOrgName,
       addPending: addMutation.isPending,
+      editOpen,
+      editName,
+      editDescription,
+      updatePending: updateMutation.isPending,
     },
     actions: {
       setAddOpen,
@@ -55,6 +109,11 @@ export function useOrganizationsListController() {
         }
         addMutation.mutate(n);
       },
+      setEditOpen,
+      openEdit,
+      setEditName,
+      setEditDescription,
+      submitEdit,
     },
   };
 }

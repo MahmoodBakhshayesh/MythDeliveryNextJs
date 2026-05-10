@@ -29,6 +29,9 @@
     "organizations": "سازمان‌ها",
     "users": "کاربران",
     "planningMap": "نقشه برنامه‌ریزی",
+    "planning": "برنامه‌ریزی",
+    "deliveries": "تحویل‌ها",
+    "drivers": "رانندگان",
     "fleet": "ناوگان",
     "packages": "مرسوله‌ها",
     "live": "ردیابی زنده",
@@ -90,8 +93,11 @@
     "subtitleFromApi": "از",
     "addOrganization": "افزودن سازمان",
     "dialogTitle": "سازمان جدید",
+    "editDialogTitle": "ویرایش سازمان",
     "nameLabel": "نام",
     "namePlaceholder": "نام سازمان",
+    "descriptionLabel": "توضیحات",
+    "descriptionPlaceholder": "یادداشت اختیاری دربارهٔ این سازمان",
     "create": "ایجاد"
   },
   "UiFleet": {
@@ -127,7 +133,11 @@
     "createUser": "ایجاد کاربر",
     "editTitle": "ویرایش کاربر",
     "displayName": "نام نمایشی",
-    "lockAccount": "قفل حساب (تا باز شدن نمی‌تواند وارد شود)"
+    "lockAccount": "قفل حساب (تا باز شدن نمی‌تواند وارد شود)",
+    "organizationsLabel": "سازمان‌ها",
+    "orgMembershipAdminHint": "برای مدیران نیازی به عضویت در سازمان نیست.",
+    "orgMembershipMemberHint": "سازمان‌هایی را انتخاب کنید که این کاربر به آن‌ها دسترسی دارد.",
+    "noOrganizationsYet": "هنوز سازمانی وجود ندارد. از صفحهٔ سازمان‌ها یکی بسازید."
   },
   "UiPackages": {
     "title": "مرسوله‌ها",
@@ -199,5 +209,66 @@
         "description": "پنهان کردن نواحی سایه‌دار؛ فقط خطوط توالی و نشانگر توقف."
       }
     }
+  },
+  "UiDrivers": {
+    "title": "رانندگان",
+    "subtitleFromApi": "رانندگان از",
+    "addDriver": "افزودن راننده",
+    "editDriver": "ویرایش راننده",
+    "license": "گواهینامه",
+    "licenseOptional": "شماره گواهینامه (اختیاری)",
+    "active": "فعال",
+    "inactive": "غیرفعال",
+    "activeLabel": "راننده فعال",
+    "emptyTitle": "راننده‌ای نیست",
+    "emptyDesc": "برای این سازمان راننده اضافه کنید.",
+    "delete": "حذف راننده",
+    "displayNamePlaceholder": "نام راننده",
+    "phoneOptional": "تلفن (اختیاری)"
+  },
+  "UiPlanning": {
+    "title": "برنامه‌ریزی",
+    "subtitleFromApi": "پنجره‌های برنامه‌ریزی از",
+    "addPlan": "پنجره برنامه‌ریزی جدید",
+    "editPlan": "ویرایش پنجره برنامه‌ریزی",
+    "openDeliveries": "تحویل‌ها و اکسل",
+    "window": "بازه",
+    "emptyTitle": "پنجره برنامه‌ریزی نیست",
+    "emptyDesc": "پنجره برنامه‌ریزی بسازید تا تحویل‌ها و مسیرها گروه‌بندی شوند.",
+    "delete": "حذف برنامه",
+    "planNamePlaceholder": "مثلاً مسیر صبح دوشنبه",
+    "startsAt": "شروع",
+    "endsAt": "پایان",
+    "timeZone": "منطقه زمانی (اختیاری)",
+    "timeZonePlaceholder": "مثلاً Asia/Tehran"
+  },
+  "UiDeliveries": {
+    "title": "تحویل‌ها",
+    "subtitle": "توقف‌های تحویل از API — فهرست، افزودن دستی یا ورود اکسل.",
+    "managePlans": "پنجره‌های برنامه‌ریزی",
+    "addStop": "افزودن توقف",
+    "planFilter": "پنجره برنامه‌ریزی",
+    "planPlaceholder": "فیلتر با برنامه",
+    "allPlans": "همه توقف‌ها (هر برنامه)",
+    "excelTitle": "ورود اکسل",
+    "excelDesc": "قالب را بگیرید، ردیف‌ها را پر کنید و بارگذاری کنید. در صورت انتخاب برنامه، موارد به همان برنامه وصل می‌شوند.",
+    "downloadTemplate": "دانلود قالب",
+    "uploadExcel": "بارگذاری اکسل",
+    "importing": "در حال ورود…",
+    "generateDraftRoutes": "تولید مسیرهای پیش‌نویس",
+    "generatingRoutes": "در حال تولید…",
+    "noPlansHint": "ابتدا در صفحه برنامه‌ریزی پنجره بسازید تا ورود به برنامه مشخص متصل شود.",
+    "lastImportLabel": "آخرین ورود",
+    "rowsImported": "ردیف وارد شد",
+    "coordinates": "مختصات",
+    "deleteStop": "حذف توقف",
+    "emptyTitle": "توقف تحویلی نیست",
+    "emptyDesc": "توقف دستی اضافه کنید یا فایل اکسل را وارد کنید.",
+    "addStopTitle": "افزودن توقف تحویل",
+    "attachToPlanHint": "این توقف به پنجره برنامه‌ریزی انتخاب‌شده بالا وصل می‌شود.",
+    "noPlanAttachHint": "برنامه مشخصی انتخاب نشده — توقف به پنجره برنامه‌ریزی وصل نمی‌شود.",
+    "latitude": "عرض جغرافیایی",
+    "longitude": "طول جغرافیایی",
+    "serviceMinutes": "دقیقه خدمت"
   }
 }

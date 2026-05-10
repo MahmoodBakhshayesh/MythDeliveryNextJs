@@ -5,8 +5,13 @@ export type DeliveryStopResponseDto = {
   organizationId: string;
   planningWindowId?: string | null;
   recipientName: string;
+  phone?: string | null;
   latitude: number;
   longitude: number;
+  addressLine1?: string | null;
+  city?: string | null;
+  serviceMinutes?: number;
+  status?: number;
 };
 
 export type RouteStopDto = {
@@ -33,6 +38,7 @@ export type PlanningWindowResponseDto = {
   name: string;
   startsAtUtc: string;
   endsAtUtc: string;
+  timeZoneId?: string | null;
 };
 
 export type AddDeliveryStopBody = {
