@@ -16,4 +16,7 @@ export const queryKeys = {
   routes: (pwId: string) => ["routes", pwId] as const,
   users: ["users"] as const,
   roles: ["roles"] as const,
+  driverPortalProfile: ["driver-portal", "profile"] as const,
+  driverPortalFleetAssignments: ["driver-portal", "fleet-assignments"] as const,
+  driverPortalPersonalVehicles: ["driver-portal", "personal-vehicles"] as const,
 };

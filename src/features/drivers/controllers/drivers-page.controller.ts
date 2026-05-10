@@ -35,6 +35,11 @@ export function useDriversPageController() {
   const [phone, setPhone] = useState("");
   const [licenseNumber, setLicenseNumber] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [preferPersonalVehicle, setPreferPersonalVehicle] = useState(false);
+  const [email, setEmail] = useState("");
+  const [userName, setUserName] = useState("");
+  const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
   const [assignmentDriverId, setAssignmentDriverId] = useState("");
   const [assignmentVehicleId, setAssignmentVehicleId] = useState("");
   const [assignmentFromLocal, setAssignmentFromLocal] = useState("");
@@ -98,6 +103,11 @@ export function useDriversPageController() {
     setPhone("");
     setLicenseNumber("");
     setIsActive(true);
+    setPreferPersonalVehicle(false);
+    setEmail("");
+    setUserName("");
+    setPassword("");
+    setPasswordConfirm("");
   };
 
   const openCreate = () => {
@@ -111,6 +121,11 @@ export function useDriversPageController() {
     setPhone(d.phone ?? "");
     setLicenseNumber(d.licenseNumber ?? "");
     setIsActive(d.isActive);
+    setPreferPersonalVehicle(Boolean(d.preferPersonalVehicleForPlanning));
+    setEmail("");
+    setUserName("");
+    setPassword("");
+    setPasswordConfirm("");
     setDialogOpen(true);
   };
 
@@ -126,18 +141,28 @@ export function useDriversPageController() {
           phone: phone.trim() || null,
           licenseNumber: licenseNumber.trim() || null,
           isActive,
+          preferPersonalVehicleForPlanning: preferPersonalVehicle,
         };
         const res = await driversRepository.update(editing.id, body);
         if (!isAppSuccess(res) || !res.body)
           throw new Error(appErrorMessage(res));
         return res.body;
       }
+      const mail = email.trim();
+      if (!mail) throw new Error("Email is required for the driver login.");
+      if (!password || password !== passwordConfirm) {
+        throw new Error("Password and confirmation must match and cannot be empty.");
+      }
       const body: AddDriverBody = {
         organizationId: effectiveOrgId,
+        email: mail,
+        userName: userName.trim() || null,
+        password,
+        passwordConfirm,
         displayName: name,
         phone: phone.trim() || null,
         licenseNumber: licenseNumber.trim() || null,
-        isActive,
+        preferPersonalVehicleForPlanning: preferPersonalVehicle,
       };
       const res = await driversRepository.add(body);
       if (!isAppSuccess(res) || !res.body)
@@ -270,6 +295,11 @@ export function useDriversPageController() {
       phone,
       licenseNumber,
       isActive,
+      preferPersonalVehicle,
+      email,
+      userName,
+      password,
+      passwordConfirm,
       savePending: saveMutation.isPending,
       deletePending: deleteMutation.isPending,
       assignmentDriverId,
@@ -292,6 +322,11 @@ export function useDriversPageController() {
       setPhone,
       setLicenseNumber,
       setIsActive,
+      setPreferPersonalVehicle,
+      setEmail,
+      setUserName,
+      setPassword,
+      setPasswordConfirm,
       submit: () => saveMutation.mutate(),
       deleteDriver: (id: string) => {
         if (

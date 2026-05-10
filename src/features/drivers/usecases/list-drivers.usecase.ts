@@ -7,5 +7,9 @@ export async function listDriversUseCase(
 ): Promise<DriverResponse[]> {
   const res = await driversRepository.listByOrganization(organizationId);
   if (!isAppSuccess(res) || !res.body) throw new Error(appErrorMessage(res));
-  return res.body;
+  return res.body.map((d) => ({
+    ...d,
+    appUserId: d.appUserId ?? "",
+    preferPersonalVehicleForPlanning: Boolean(d.preferPersonalVehicleForPlanning),
+  }));
 }

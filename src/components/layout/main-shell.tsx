@@ -19,6 +19,9 @@ import {
   Waypoints,
   Files,
   Warehouse,
+  ShieldAlert,
+  Database,
+  Car,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -36,6 +39,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { useIsAdmin } from "@/lib/use-is-admin";
+import { useCanDriverSelfService } from "@/lib/use-can-driver-self-service";
+import { useCanFleetOperations } from "@/lib/use-can-fleet-operations";
 
 export type ShellNavItem = {
   href: string;
@@ -85,14 +90,36 @@ export function MainShell({ children }: { children: React.ReactNode }) {
   const t = useTranslations("Nav");
   const tc = useTranslations("Common");
   const isAdmin = useIsAdmin();
+  const fleet = useCanFleetOperations();
+  const driverPortal = useCanDriverSelfService();
+  const pureDriver = driverPortal && !fleet;
+  const homeHref = pureDriver ? "/driver" : "/dashboard";
 
   const navItems = useMemo((): ShellNavItem[] => {
+    if (pureDriver) {
+      return [
+        { href: "/driver", label: t("driverHome"), icon: LayoutDashboard },
+        { href: "/driver/profile", label: t("driverProfile"), icon: UserRound },
+        { href: "/driver/vehicles", label: t("driverVehicles"), icon: Car },
+      ];
+    }
+
     const items: ShellNavItem[] = [
       { href: "/dashboard", label: t("dashboard"), icon: LayoutDashboard },
       { href: "/organizations", label: t("organizations"), icon: Building2 },
     ];
     if (isAdmin) {
       items.push({ href: "/users", label: t("users"), icon: Users });
+      items.push({
+        href: "/admin",
+        label: t("adminConsole"),
+        icon: ShieldAlert,
+      });
+      items.push({
+        href: "/admin/operations",
+        label: t("adminOperations"),
+        icon: Database,
+      });
     }
     items.push(
       { href: "/plan-workflow", label: t("planWorkflow"), icon: Waypoints },
@@ -106,14 +133,21 @@ export function MainShell({ children }: { children: React.ReactNode }) {
       { href: "/live", label: t("live"), icon: Radio },
       { href: "/profile", label: t("profile"), icon: UserRound },
     );
+    if (driverPortal) {
+      items.push({
+        href: "/driver",
+        label: t("driverWorkspace"),
+        icon: Car,
+      });
+    }
     return items;
-  }, [t, isAdmin]);
+  }, [t, isAdmin, pureDriver, driverPortal]);
 
   return (
     <div className="flex min-h-screen flex-col bg-background md:flex-row">
       <aside className="hidden w-64 shrink-0 border-e bg-sidebar text-sidebar-foreground md:flex md:flex-col">
         <div className="flex h-14 items-center border-b border-sidebar-border px-4">
-          <Link href="/dashboard" className="font-semibold tracking-tight">
+          <Link href={homeHref} className="font-semibold tracking-tight">
             {t("brand")}
           </Link>
         </div>

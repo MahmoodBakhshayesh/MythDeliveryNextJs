@@ -10,6 +10,8 @@ import { loginWithPasswordUseCase } from "@/features/auth/usecases/login-with-pa
 import { requestOtpUseCase } from "@/features/auth/usecases/request-otp.usecase";
 import { verifyOtpUseCase } from "@/features/auth/usecases/verify-otp.usecase";
 import { getApiBaseUrl } from "@/lib/env";
+import { mergeRolesFromJwt } from "@/lib/jwt-roles";
+import { getPostLoginRoute } from "@/lib/roles";
 import { useAuthStore } from "@/stores/auth-store";
 
 /** Orchestrates login view: owns transient UI state and calls use cases (never repos). */
@@ -32,7 +34,8 @@ export function useLoginController() {
       setSession(body);
       void queryClient.invalidateQueries();
       toast.success(t("welcomeBack"));
-      router.replace("/dashboard");
+      const roles = mergeRolesFromJwt(body.roles ?? [], body.token.accessToken);
+      router.replace(getPostLoginRoute(roles));
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -43,7 +46,8 @@ export function useLoginController() {
       setSession(body);
       void queryClient.invalidateQueries();
       toast.success(t("signedInGoogle"));
-      router.replace("/dashboard");
+      const roles = mergeRolesFromJwt(body.roles ?? [], body.token.accessToken);
+      router.replace(getPostLoginRoute(roles));
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -63,7 +67,8 @@ export function useLoginController() {
       setSession(body);
       void queryClient.invalidateQueries();
       toast.success(t("signedIn"));
-      router.replace("/dashboard");
+      const roles = mergeRolesFromJwt(body.roles ?? [], body.token.accessToken);
+      router.replace(getPostLoginRoute(roles));
     },
     onError: (e: Error) => toast.error(e.message),
   });

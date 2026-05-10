@@ -48,6 +48,11 @@ export function DriversPageView({ viewState, actions }: DriversPageViewModel) {
     phone,
     licenseNumber,
     isActive,
+    preferPersonalVehicle,
+    email,
+    userName,
+    password,
+    passwordConfirm,
     savePending,
     deletePending,
     assignmentDriverId,
@@ -377,8 +382,56 @@ export function DriversPageView({ viewState, actions }: DriversPageViewModel) {
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-2">
+            {!editing ? (
+              <>
+                <p className="text-muted-foreground text-sm">{t("createLoginHint")}</p>
+                <div className="grid gap-2">
+                  <Label htmlFor="drv-email">{tc("email")}</Label>
+                  <Input
+                    id="drv-email"
+                    type="email"
+                    autoComplete="off"
+                    value={email}
+                    onChange={(e) => actions.setEmail(e.target.value)}
+                    placeholder={t("emailPlaceholder")}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="drv-username">{t("loginUsername")}</Label>
+                  <Input
+                    id="drv-username"
+                    autoComplete="off"
+                    value={userName}
+                    onChange={(e) => actions.setUserName(e.target.value)}
+                    placeholder={t("loginUsernamePlaceholder")}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="drv-password">{tc("password")}</Label>
+                  <Input
+                    id="drv-password"
+                    type="password"
+                    autoComplete="new-password"
+                    value={password}
+                    onChange={(e) => actions.setPassword(e.target.value)}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="drv-password2">{t("passwordConfirm")}</Label>
+                  <Input
+                    id="drv-password2"
+                    type="password"
+                    autoComplete="new-password"
+                    value={passwordConfirm}
+                    onChange={(e) => actions.setPasswordConfirm(e.target.value)}
+                  />
+                </div>
+              </>
+            ) : (
+              <p className="text-muted-foreground text-sm">{t("editLoginHint")}</p>
+            )}
             <div className="grid gap-2">
-              <Label htmlFor="drv-name">{tc("name")}</Label>
+              <Label htmlFor="drv-name">{t("profileDisplayName")}</Label>
               <Input
                 id="drv-name"
                 value={displayName}
@@ -406,16 +459,30 @@ export function DriversPageView({ viewState, actions }: DriversPageViewModel) {
             </div>
             <label className="flex cursor-pointer items-center gap-2">
               <input
-                id="drv-active"
+                id="drv-personal-veh"
                 type="checkbox"
-                checked={isActive}
-                onChange={(e) => actions.setIsActive(e.target.checked)}
+                checked={preferPersonalVehicle}
+                onChange={(e) => actions.setPreferPersonalVehicle(e.target.checked)}
                 className="border-input size-4 rounded border"
               />
               <span className="text-sm font-medium leading-none">
-                {t("activeLabel")}
+                {t("preferPersonalVehicleLabel")}
               </span>
             </label>
+            {editing ? (
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  id="drv-active"
+                  type="checkbox"
+                  checked={isActive}
+                  onChange={(e) => actions.setIsActive(e.target.checked)}
+                  className="border-input size-4 rounded border"
+                />
+                <span className="text-sm font-medium leading-none">
+                  {t("activeLabel")}
+                </span>
+              </label>
+            ) : null}
           </div>
           <DialogFooter>
             <Button
