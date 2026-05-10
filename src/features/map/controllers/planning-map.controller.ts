@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { buildMapOverlay } from "@/features/map/lib/build-map-overlay";
@@ -34,6 +35,7 @@ function readStoredPolygonAlgorithm(): PolygonRegionAlgorithm | null {
 
 export function usePlanningMapController() {
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
   const [polygonRegionAlgorithm, setPolygonRegionAlgorithm] =
     useState<PolygonRegionAlgorithm>("convexHull");
   const [selectedOrgId, setSelectedOrgId] = useState("");
@@ -58,6 +60,13 @@ export function usePlanningMapController() {
   }, []);
 
   useEffect(() => {
+    const orgId = searchParams.get("organizationId");
+    const planningWindowId = searchParams.get("planningWindowId");
+    if (orgId) setSelectedOrgId(orgId);
+    if (planningWindowId) setSelectedPlanningWindowId(planningWindowId);
+  }, [searchParams]);
+
+  useEffect(() => {
     try {
       localStorage.setItem(POLYGON_REGION_STORAGE_KEY, polygonRegionAlgorithm);
     } catch {
@@ -78,6 +87,9 @@ export function usePlanningMapController() {
   });
 
   const planningWindows = planningWindowsQuery.data;
+  const selectedPlanningWindow = planningWindows?.find(
+    (w) => w.id === selectedPlanningWindowId,
+  );
   const firstPwId = planningWindows?.[0]?.id;
 
   useEffect(() => {
@@ -136,6 +148,10 @@ export function usePlanningMapController() {
   });
 
   const openAddDialogAt = (lat: number, lng: number) => {
+    if (selectedPlanningWindow?.isConfirmed) {
+      toast.error("Plan is confirmed and locked. Re-open it to edit stops.");
+      return;
+    }
     setPendingLat(lat);
     setPendingLng(lng);
     setRecipientName("New stop");
@@ -166,6 +182,7 @@ export function usePlanningMapController() {
     viewState: {
       organizations: orgs ?? null,
       planningWindows: planningWindows ?? null,
+      selectedPlanningWindow: selectedPlanningWindow ?? null,
       selectedOrgId: effectiveOrgId,
       selectedPlanningWindowId,
       overlay,

@@ -10,6 +10,8 @@ import {
   Polyline,
   Popup,
   TileLayer,
+  Tooltip,
+  WMSTileLayer,
   useMap,
   useMapEvents,
 } from "react-leaflet";
@@ -19,6 +21,13 @@ import type {
   RouteLayerModel,
   StopPinModel,
 } from "@/features/map/domain/planning-map.types";
+import {
+  getMapTileAttribution,
+  getMapTileUrl,
+  getMapUseWms,
+  getMapWmsFormat,
+  getMapWmsLayers,
+} from "@/lib/env";
 
 const DEFAULT_CENTER: [number, number] = [47.4, 8.55];
 const DEFAULT_ZOOM = 6;
@@ -82,7 +91,7 @@ function StopMarkers({ stops }: { stops: StopPinModel[] }) {
     <CircleMarker
       key={s.id}
       center={[s.lat, s.lng]}
-      radius={7}
+      radius={s.sequence != null ? 11 : 7}
       pathOptions={{
         color: s.color,
         fillColor: s.color,
@@ -90,6 +99,18 @@ function StopMarkers({ stops }: { stops: StopPinModel[] }) {
         weight: 2,
       }}
     >
+      {s.sequence != null ? (
+        <Tooltip
+          direction="center"
+          permanent
+          opacity={1}
+          className="map-stop-seq-tooltip !m-0 !border-0 !bg-transparent !text-white !shadow-none"
+        >
+          <span className="text-[11px] font-bold leading-none drop-shadow-[0_1px_1px_rgba(0,0,0,0.85)]">
+            {s.sequence}
+          </span>
+        </Tooltip>
+      ) : null}
       <Popup>{s.recipientName}</Popup>
     </CircleMarker>
   ));
@@ -105,6 +126,11 @@ export function PlanningMapLeaflet({
   onMapClick,
 }: PlanningMapLeafletProps) {
   const hasBounds = overlay.boundsPoints.length > 0;
+  const tileUrl = getMapTileUrl();
+  const tileAttribution = getMapTileAttribution();
+  const useWms = getMapUseWms();
+  const wmsLayers = getMapWmsLayers();
+  const wmsFormat = getMapWmsFormat();
 
   return (
     <div dir="ltr" className="size-full min-h-[420px]">
@@ -114,10 +140,17 @@ export function PlanningMapLeaflet({
       className="z-0 size-full min-h-[420px] rounded-lg ring-1 ring-border"
       scrollWheelZoom
     >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+      {useWms ? (
+        <WMSTileLayer
+          attribution={tileAttribution}
+          url={tileUrl}
+          layers={wmsLayers}
+          format={wmsFormat}
+          transparent={false}
+        />
+      ) : (
+        <TileLayer attribution={tileAttribution} url={tileUrl} />
+      )}
       {hasBounds ? <FitBounds points={overlay.boundsPoints} /> : null}
       <MapClickLayer onMapClick={onMapClick} />
       {overlay.routes.map((layer) => (

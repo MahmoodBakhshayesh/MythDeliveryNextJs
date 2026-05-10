@@ -42,7 +42,13 @@ export function FleetPageView({ viewState, actions }: FleetPageViewModel) {
     vehicleDialogOpen,
     vehicleName,
     plateNumber,
+    vehicleTypePresetKey,
+    vehicleTypePresets,
+    isCustomVehicleType,
     vehicleType,
+    maxWeightKg,
+    maxVolumeM3,
+    maxStopsPerRoute,
     addVehiclePending,
   } = viewState;
 
@@ -148,13 +154,62 @@ export function FleetPageView({ viewState, actions }: FleetPageViewModel) {
               />
             </div>
             <div className="space-y-2">
+              <Label>{t("typePresetLabel")}</Label>
+              <Select
+                value={vehicleTypePresetKey}
+                onValueChange={(v) => actions.setVehicleTypePresetKey(v ?? "")}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t("typePresetPlaceholder")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {vehicleTypePresets.map((p) => (
+                    <SelectItem key={p.key} value={p.key}>
+                      {t(`presets.${p.key}`)}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="custom">{t("presets.custom")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="v-type">{t("typeLabel")}</Label>
               <Input
                 id="v-type"
                 value={vehicleType}
                 onChange={(e) => actions.setVehicleType(e.target.value)}
                 placeholder={t("typePlaceholder")}
+                disabled={!isCustomVehicleType}
               />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="v-max-weight">{t("maxWeightKgLabel")}</Label>
+                <Input
+                  id="v-max-weight"
+                  inputMode="decimal"
+                  value={maxWeightKg}
+                  onChange={(e) => actions.setMaxWeightKg(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="v-max-volume">{t("maxVolumeM3Label")}</Label>
+                <Input
+                  id="v-max-volume"
+                  inputMode="decimal"
+                  value={maxVolumeM3}
+                  onChange={(e) => actions.setMaxVolumeM3(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="v-max-stops">{t("maxStopsPerRouteLabel")}</Label>
+                <Input
+                  id="v-max-stops"
+                  inputMode="numeric"
+                  value={maxStopsPerRoute}
+                  onChange={(e) => actions.setMaxStopsPerRoute(e.target.value)}
+                />
+              </div>
             </div>
           </div>
           <DialogFooter className="gap-2 sm:justify-end">

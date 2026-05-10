@@ -10,6 +10,8 @@ import { addPlanningWindowUseCase } from "@/features/planning/usecases/add-plann
 import { deletePlanningWindowUseCase } from "@/features/planning/usecases/delete-planning-window.usecase";
 import { updatePlanningWindowUseCase } from "@/features/planning/usecases/update-planning-window.usecase";
 import { queryKeys } from "@/lib/query-keys";
+import { appErrorMessage, isAppSuccess } from "@/lib/api-types";
+import { planningWindowsRepository } from "@/features/map/repositories/planning-windows.repository";
 
 function utcIsoToLocalDatetimeValue(iso: string): string {
   const d = new Date(iso);
@@ -32,6 +34,12 @@ export function usePlanningPageController() {
   const [startsAtLocal, setStartsAtLocal] = useState("");
   const [endsAtLocal, setEndsAtLocal] = useState("");
   const [timeZoneId, setTimeZoneId] = useState("");
+  const [planningStrategy, setPlanningStrategy] = useState<
+    "SpatialCell" | "LatitudeBands" | "LongitudeBands" | "RadialFromCentroid"
+  >("SpatialCell");
+  const [polygonAlgorithm, setPolygonAlgorithm] = useState<
+    "convexHull" | "concaveHull" | "boundingBox" | "none"
+  >("convexHull");
 
   const orgsQuery = useQuery({
     queryKey: queryKeys.organizations,
@@ -129,6 +137,39 @@ export function usePlanningPageController() {
     onError: (err: Error) => toast.error(err.message || "Could not delete plan."),
   });
 
+  const confirmMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await planningWindowsRepository.confirm(id, {
+        strategy: planningStrategy,
+        polygonAlgorithm,
+      });
+      if (!isAppSuccess(res) || !res.body) throw new Error(appErrorMessage(res));
+      return res.body;
+    },
+    onSuccess: async () => {
+      toast.success("Plan confirmed and locked.");
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.planningWindows(effectiveOrgId),
+      });
+    },
+    onError: (err: Error) => toast.error(err.message || "Could not confirm plan."),
+  });
+
+  const reopenMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await planningWindowsRepository.reopen(id);
+      if (!isAppSuccess(res) || !res.body) throw new Error(appErrorMessage(res));
+      return res.body;
+    },
+    onSuccess: async () => {
+      toast.success("Plan re-opened.");
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.planningWindows(effectiveOrgId),
+      });
+    },
+    onError: (err: Error) => toast.error(err.message || "Could not re-open plan."),
+  });
+
   return {
     viewState: {
       organizations: orgs ?? null,
@@ -142,8 +183,12 @@ export function usePlanningPageController() {
       startsAtLocal,
       endsAtLocal,
       timeZoneId,
+      planningStrategy,
+      polygonAlgorithm,
       savePending: saveMutation.isPending,
       deletePending: deleteMutation.isPending,
+      confirmPending: confirmMutation.isPending,
+      reopenPending: reopenMutation.isPending,
     },
     actions: {
       setOrgId: (id: string | null) => setSelectedOrgId(id ?? ""),
@@ -154,6 +199,8 @@ export function usePlanningPageController() {
       setStartsAtLocal,
       setEndsAtLocal,
       setTimeZoneId,
+      setPlanningStrategy,
+      setPolygonAlgorithm,
       submit: () => saveMutation.mutate(),
       deletePlan: (id: string) => {
         if (
@@ -163,6 +210,8 @@ export function usePlanningPageController() {
           return;
         deleteMutation.mutate(id);
       },
+      confirmPlan: (id: string) => confirmMutation.mutate(id),
+      reopenPlan: (id: string) => reopenMutation.mutate(id),
     },
   };
 }

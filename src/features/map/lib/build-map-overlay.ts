@@ -17,12 +17,14 @@ export function buildMapOverlay(
   polygonAlgorithm: PolygonRegionAlgorithm,
 ): MapOverlayModel {
   const stopColorById = new Map<string, string>();
+  const stopSequenceById = new Map<string, number>();
 
   const routeLayers: RouteLayerModel[] = routes.map((route) => {
     const color = colorForDriverId(route.driverId);
     const sorted = [...route.stops].sort((a, b) => a.sequence - b.sequence);
     for (const rs of sorted) {
       stopColorById.set(rs.deliveryStopId, color);
+      stopSequenceById.set(rs.deliveryStopId, rs.sequence);
     }
     const polyline: [number, number][] = sorted.map((s) => [
       s.latitude,
@@ -46,6 +48,7 @@ export function buildMapOverlay(
     lat: s.latitude,
     lng: s.longitude,
     color: stopColorById.get(s.id) ?? UNASSIGNED_STOP_COLOR,
+    sequence: stopSequenceById.get(s.id) ?? null,
   }));
 
   const boundsPoints: [number, number][] = stops.map((s) => [

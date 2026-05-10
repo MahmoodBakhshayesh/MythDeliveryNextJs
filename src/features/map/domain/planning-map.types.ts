@@ -11,6 +11,8 @@ export type DeliveryStopResponseDto = {
   addressLine1?: string | null;
   city?: string | null;
   serviceMinutes?: number;
+  serviceDate?: string | null;
+  timeSection?: number | null;
   status?: number;
 };
 
@@ -39,6 +41,11 @@ export type PlanningWindowResponseDto = {
   startsAtUtc: string;
   endsAtUtc: string;
   timeZoneId?: string | null;
+  isConfirmed?: boolean;
+  confirmedAtUtc?: string | null;
+  confirmedByUserId?: string | null;
+  confirmedStrategy?: string | null;
+  confirmedPolygonAlgorithm?: string | null;
 };
 
 export type AddDeliveryStopBody = {
@@ -49,6 +56,8 @@ export type AddDeliveryStopBody = {
   longitude: number;
   phone?: string | null;
   serviceMinutes?: number;
+  serviceDate?: string | null;
+  timeSection?: number | null;
 };
 
 export type RouteLayerModel = {
@@ -66,6 +75,8 @@ export type StopPinModel = {
   lat: number;
   lng: number;
   color: string;
+  /** Visit order on assigned route (when known). */
+  sequence?: number | null;
 };
 
 export type MapOverlayModel = {

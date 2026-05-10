@@ -55,8 +55,12 @@ export function PlanningPageView({ viewState, actions }: PlanningPageViewModel) 
     startsAtLocal,
     endsAtLocal,
     timeZoneId,
+    planningStrategy,
+    polygonAlgorithm,
     savePending,
     deletePending,
+    confirmPending,
+    reopenPending,
   } = viewState;
 
   const loading = orgsLoading || windowsLoading;
@@ -113,6 +117,41 @@ export function PlanningPageView({ viewState, actions }: PlanningPageViewModel) 
         </Select>
       </div>
 
+      <div className="max-w-md space-y-2">
+        <Label>Planning strategy</Label>
+        <Select
+          value={planningStrategy}
+          onValueChange={(v) => actions.setPlanningStrategy(v as typeof planningStrategy)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select strategy" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="SpatialCell">Spatial cell</SelectItem>
+            <SelectItem value="LatitudeBands">Latitude bands</SelectItem>
+            <SelectItem value="LongitudeBands">Longitude bands</SelectItem>
+            <SelectItem value="RadialFromCentroid">Radial from centroid</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="max-w-md space-y-2">
+        <Label>Polygon structure</Label>
+        <Select
+          value={polygonAlgorithm}
+          onValueChange={(v) => actions.setPolygonAlgorithm(v as typeof polygonAlgorithm)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select polygon" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="convexHull">Convex hull</SelectItem>
+            <SelectItem value="concaveHull">Concave hull</SelectItem>
+            <SelectItem value="boundingBox">Bounding box</SelectItem>
+            <SelectItem value="none">No polygon</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       {loading ? (
         <div className="grid gap-3 sm:grid-cols-2">
           <Skeleton className="h-28" />
@@ -125,7 +164,7 @@ export function PlanningPageView({ viewState, actions }: PlanningPageViewModel) 
               <tr className="text-start">
                 <th className="px-3 py-2 font-medium">{tc("name")}</th>
                 <th className="px-3 py-2 font-medium">{t("window")}</th>
-                <th className="px-3 py-2 font-medium w-[120px]" />
+                <th className="px-3 py-2 font-medium w-[320px]" />
               </tr>
             </thead>
             <tbody>
@@ -134,9 +173,51 @@ export function PlanningPageView({ viewState, actions }: PlanningPageViewModel) 
                   <td className="px-3 py-2 font-medium">{w.name}</td>
                   <td className="text-muted-foreground px-3 py-2 text-xs">
                     {formatWindowRange(w.startsAtUtc, w.endsAtUtc)}
+                    {w.isConfirmed ? (
+                      <div className="mt-1 text-emerald-600">
+                        Confirmed ({w.confirmedStrategy ?? "strategy n/a"})
+                      </div>
+                    ) : null}
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex justify-end gap-1">
+                      <Link
+                        href={`/map?organizationId=${selectedOrgId}&planningWindowId=${w.id}`}
+                        className={cn(
+                          buttonVariants({ variant: "outline", size: "sm" }),
+                        )}
+                      >
+                        Preview map
+                      </Link>
+                      <Link
+                        href={`/deliveries?organizationId=${selectedOrgId}&planningWindowId=${w.id}&strategy=${planningStrategy}`}
+                        className={cn(
+                          buttonVariants({ variant: "outline", size: "sm" }),
+                        )}
+                      >
+                        Confirm & export
+                      </Link>
+                      {w.isConfirmed ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={reopenPending}
+                          onClick={() => actions.reopenPlan(w.id)}
+                        >
+                          Re-open
+                        </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={confirmPending}
+                          onClick={() => actions.confirmPlan(w.id)}
+                        >
+                          Confirm
+                        </Button>
+                      )}
                       <Button
                         type="button"
                         variant="ghost"

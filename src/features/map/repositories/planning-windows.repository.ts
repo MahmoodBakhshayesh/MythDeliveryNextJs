@@ -17,6 +17,12 @@ export type UpdatePlanningWindowBody = {
   timeZoneId?: string | null;
 };
 
+export type ConfirmPlanningWindowBody = {
+  strategy?: string | null;
+  polygonAlgorithm?: string | null;
+  confirmedByUserId?: string | null;
+};
+
 export const planningWindowsRepository = {
   listByOrganization(organizationId: string) {
     const q = new URLSearchParams({ organizationId });
@@ -43,6 +49,20 @@ export const planningWindowsRepository = {
   delete(id: string) {
     return apiJson<unknown>(`/api/planningwindows/${id}`, {
       method: "DELETE",
+    });
+  },
+
+  confirm(id: string, body: ConfirmPlanningWindowBody) {
+    return apiJson<PlanningWindowResponseDto>(`/api/planningwindows/${id}/confirm`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  reopen(id: string) {
+    return apiJson<PlanningWindowResponseDto>(`/api/planningwindows/${id}/reopen`, {
+      method: "POST",
+      body: JSON.stringify({}),
     });
   },
 };

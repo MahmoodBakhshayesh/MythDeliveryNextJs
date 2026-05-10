@@ -36,8 +36,12 @@ export function DriversPageView({ viewState, actions }: DriversPageViewModel) {
     organizations,
     selectedOrgId,
     drivers,
+    vehicles,
+    assignments,
     orgsLoading,
     driversLoading,
+    vehiclesLoading,
+    assignmentsLoading,
     dialogOpen,
     editing,
     displayName,
@@ -46,9 +50,20 @@ export function DriversPageView({ viewState, actions }: DriversPageViewModel) {
     isActive,
     savePending,
     deletePending,
+    assignmentDriverId,
+    assignmentVehicleId,
+    assignmentFromLocal,
+    assignmentToLocal,
+    assignmentSavePending,
+    assignmentDeletePending,
+    editAssignmentDialogOpen,
+    editingAssignmentFromLocal,
+    editingAssignmentToLocal,
+    assignmentUpdatePending,
   } = viewState;
 
   const loading = orgsLoading || driversLoading;
+  const relationLoading = orgsLoading || vehiclesLoading || assignmentsLoading;
 
   return (
     <div className="space-y-6">
@@ -162,6 +177,185 @@ export function DriversPageView({ viewState, actions }: DriversPageViewModel) {
           </CardHeader>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("relationsTitle")}</CardTitle>
+          <CardDescription>{t("relationsDesc")}</CardDescription>
+        </CardHeader>
+        <div className="grid gap-3 px-4 pb-4 md:grid-cols-2">
+          <div className="grid gap-2">
+            <Label>{t("driver")}</Label>
+            <Select
+              value={assignmentDriverId}
+              onValueChange={(v) => actions.setAssignmentDriverId(v ?? "")}
+              disabled={!drivers?.length}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={t("selectDriver")} />
+              </SelectTrigger>
+              <SelectContent>
+                {drivers?.map((d) => (
+                  <SelectItem key={d.id} value={d.id}>
+                    {d.displayName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-2">
+            <Label>{t("vehicle")}</Label>
+            <Select
+              value={assignmentVehicleId}
+              onValueChange={(v) => actions.setAssignmentVehicleId(v ?? "")}
+              disabled={!vehicles?.length}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={t("selectVehicle")} />
+              </SelectTrigger>
+              <SelectContent>
+                {vehicles?.map((v) => (
+                  <SelectItem key={v.id} value={v.id}>
+                    {v.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-2">
+            <Label>{t("effectiveFrom")}</Label>
+            <Input
+              type="datetime-local"
+              value={assignmentFromLocal}
+              onChange={(e) => actions.setAssignmentFromLocal(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label>{t("effectiveTo")}</Label>
+            <Input
+              type="datetime-local"
+              value={assignmentToLocal}
+              onChange={(e) => actions.setAssignmentToLocal(e.target.value)}
+            />
+          </div>
+        </div>
+        <div className="px-4 pb-4">
+          <Button
+            type="button"
+            onClick={() => actions.assignVehicle()}
+            disabled={assignmentSavePending || !drivers?.length || !vehicles?.length}
+          >
+            {assignmentSavePending ? tc("saving") : t("assignVehicle")}
+          </Button>
+        </div>
+        {relationLoading ? (
+          <div className="grid gap-3 px-4 pb-4 sm:grid-cols-2">
+            <Skeleton className="h-16" />
+            <Skeleton className="h-16" />
+          </div>
+        ) : assignments?.length ? (
+          <div className="overflow-hidden rounded-lg border mx-4 mb-4">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/60">
+                <tr className="text-start">
+                  <th className="px-3 py-2 font-medium">{t("driver")}</th>
+                  <th className="px-3 py-2 font-medium">{t("vehicle")}</th>
+                  <th className="px-3 py-2 font-medium">{t("effectiveWindow")}</th>
+                  <th className="px-3 py-2 font-medium w-[112px]" />
+                </tr>
+              </thead>
+              <tbody>
+                {assignments.map((a) => (
+                  <tr key={a.id} className="border-t">
+                    <td className="px-3 py-2">{a.driverDisplayName ?? "—"}</td>
+                    <td className="px-3 py-2">{a.vehicleName ?? "—"}</td>
+                    <td className="text-muted-foreground px-3 py-2 text-xs">
+                      {new Date(a.effectiveFromUtc).toLocaleString()} -{" "}
+                      {a.effectiveToUtc
+                        ? new Date(a.effectiveToUtc).toLocaleString()
+                        : t("openEnded")}
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          aria-label={t("editRelation")}
+                          onClick={() => actions.openEditAssignment(a)}
+                        >
+                          <Pencil className="size-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          aria-label={t("deleteRelation")}
+                          disabled={assignmentDeletePending}
+                          onClick={() => actions.deleteAssignment(a.id)}
+                        >
+                          <Trash2 className="text-destructive size-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-muted-foreground px-4 pb-4 text-sm">
+            {t("emptyRelations")}
+          </p>
+        )}
+      </Card>
+
+      <Dialog
+        open={editAssignmentDialogOpen}
+        onOpenChange={actions.setEditAssignmentDialogOpen}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("editRelationTitle")}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label htmlFor="rel-from">{t("effectiveFrom")}</Label>
+              <Input
+                id="rel-from"
+                type="datetime-local"
+                value={editingAssignmentFromLocal}
+                onChange={(e) => actions.setEditingAssignmentFromLocal(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="rel-to">{t("effectiveTo")}</Label>
+              <Input
+                id="rel-to"
+                type="datetime-local"
+                value={editingAssignmentToLocal}
+                onChange={(e) => actions.setEditingAssignmentToLocal(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => actions.setEditAssignmentDialogOpen(false)}
+            >
+              {tc("cancel")}
+            </Button>
+            <Button
+              type="button"
+              disabled={assignmentUpdatePending}
+              onClick={() => actions.updateAssignment()}
+            >
+              {assignmentUpdatePending ? tc("saving") : tc("save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={dialogOpen} onOpenChange={actions.setDialogOpen}>
         <DialogContent>

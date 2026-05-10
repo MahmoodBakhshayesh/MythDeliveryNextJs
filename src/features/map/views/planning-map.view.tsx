@@ -50,6 +50,7 @@ export function PlanningMapView({ viewState, actions }: PlanningMapViewModel) {
   const {
     organizations,
     planningWindows,
+    selectedPlanningWindow,
     selectedOrgId,
     selectedPlanningWindowId,
     overlay,
@@ -83,6 +84,12 @@ export function PlanningMapView({ viewState, actions }: PlanningMapViewModel) {
         </h1>
         <p className="text-muted-foreground mt-1 text-sm">{t("subtitle")}</p>
       </div>
+
+      {selectedPlanningWindow?.isConfirmed ? (
+        <p className="text-amber-600 text-sm">
+          This planning window is confirmed and locked. Re-open it from Planning to edit routes/stops.
+        </p>
+      ) : null}
 
       <div className="flex max-w-2xl flex-col gap-4 sm:flex-row">
         <div className="flex-1 space-y-2">

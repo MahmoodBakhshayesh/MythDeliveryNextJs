@@ -24,3 +24,25 @@ export type UpdateDriverBody = {
   licenseNumber?: string | null;
   isActive: boolean;
 };
+
+export type DriverVehicleAssignmentResponse = {
+  id: string;
+  driverId: string;
+  vehicleId: string;
+  driverDisplayName?: string | null;
+  vehicleName?: string | null;
+  effectiveFromUtc: string;
+  effectiveToUtc?: string | null;
+};
+
+export type AddDriverVehicleAssignmentBody = {
+  driverId: string;
+  vehicleId: string;
+  effectiveFromUtc: string;
+  effectiveToUtc?: string | null;
+};
+
+export type UpdateDriverVehicleAssignmentBody = {
+  effectiveFromUtc: string;
+  effectiveToUtc?: string | null;
+};

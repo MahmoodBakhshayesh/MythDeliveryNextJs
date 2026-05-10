@@ -17,6 +17,7 @@ import {
   UserCircle,
   ClipboardList,
   CalendarRange,
+  Waypoints,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -88,6 +89,7 @@ export function MainShell({ children }: { children: React.ReactNode }) {
       { href: "/organizations", label: t("organizations"), icon: Building2 },
       { href: "/users", label: t("users"), icon: Users },
       { href: "/map", label: t("planningMap"), icon: MapPinned },
+      { href: "/plan-workflow", label: t("planWorkflow"), icon: Waypoints },
       { href: "/planning", label: t("planning"), icon: CalendarRange },
       { href: "/deliveries", label: t("deliveries"), icon: ClipboardList },
       { href: "/drivers", label: t("drivers"), icon: UserCircle },

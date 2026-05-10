@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { toast } from "sonner";
 import {
@@ -14,13 +15,29 @@ import { addDeliveryStopUseCase } from "@/features/map/usecases/add-delivery-sto
 import { listPlanningWindowsUseCase } from "@/features/map/usecases/list-planning-windows.usecase";
 import { listOrganizationsUseCase } from "@/features/organizations/usecases/list-organizations.usecase";
 import { routePlanningRepository } from "@/features/planning/repositories/route-planning.repository";
+import { deletePlanningWindowUseCase } from "@/features/planning/usecases/delete-planning-window.usecase";
 import { queryKeys } from "@/lib/query-keys";
 import { appErrorMessage, isAppSuccess } from "@/lib/api-types";
+import { useIsAdmin } from "@/lib/use-is-admin";
 
 const ALL_PLANS = "__all__";
+const PLANNING_STRATEGIES = [
+  "SpatialCell",
+  "LatitudeBands",
+  "LongitudeBands",
+  "RadialFromCentroid",
+] as const;
+const TIME_SECTIONS = [
+  { value: 0, label: "00:00-06:00" },
+  { value: 1, label: "06:00-12:00" },
+  { value: 2, label: "12:00-18:00" },
+  { value: 3, label: "18:00-24:00" },
+] as const;
 
 export function useDeliveriesPageController() {
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
+  const isAdmin = useIsAdmin();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedOrgId, setSelectedOrgId] = useState("");
   const [selectedPlanId, setSelectedPlanId] = useState(ALL_PLANS);
@@ -30,6 +47,11 @@ export function useDeliveriesPageController() {
   const [longitude, setLongitude] = useState("");
   const [phone, setPhone] = useState("");
   const [serviceMinutes, setServiceMinutes] = useState("10");
+  const [serviceDate, setServiceDate] = useState("");
+  const [timeSection, setTimeSection] = useState<string>("");
+  const [planningStrategy, setPlanningStrategy] = useState<
+    (typeof PLANNING_STRATEGIES)[number]
+  >("SpatialCell");
   const [lastImport, setLastImport] = useState<ImportJobResponseDto | null>(
     null,
   );
@@ -41,6 +63,22 @@ export function useDeliveriesPageController() {
 
   const orgs = orgsQuery.data;
   const firstOrgId = orgs?.[0]?.id;
+
+  useEffect(() => {
+    const strategy = searchParams.get("strategy");
+    if (
+      strategy === "SpatialCell" ||
+      strategy === "LatitudeBands" ||
+      strategy === "LongitudeBands" ||
+      strategy === "RadialFromCentroid"
+    ) {
+      setPlanningStrategy(strategy);
+    }
+    const planId = searchParams.get("planningWindowId");
+    if (planId) setSelectedPlanId(planId);
+    const orgId = searchParams.get("organizationId");
+    if (orgId) setSelectedOrgId(orgId);
+  }, [searchParams]);
 
   useEffect(() => {
     if (!selectedOrgId && firstOrgId) setSelectedOrgId(firstOrgId);
@@ -81,6 +119,8 @@ export function useDeliveriesPageController() {
     setLongitude("");
     setPhone("");
     setServiceMinutes("10");
+    setServiceDate("");
+    setTimeSection("");
   };
 
   const addMutation = useMutation({
@@ -95,6 +135,9 @@ export function useDeliveriesPageController() {
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
         throw new Error("Enter valid latitude and longitude.");
       }
+      if (timeSection && !serviceDate) {
+        throw new Error("Set service date when time section is selected.");
+      }
       const body: AddDeliveryStopBody = {
         organizationId: effectiveOrgId,
         planningWindowId:
@@ -104,6 +147,8 @@ export function useDeliveriesPageController() {
         longitude: lng,
         phone: phone.trim() || null,
         serviceMinutes: Number.isFinite(mins) ? mins : 10,
+        serviceDate: serviceDate || null,
+        timeSection: timeSection ? Number(timeSection) : null,
       };
       return addDeliveryStopUseCase(body);
     },
@@ -137,6 +182,36 @@ export function useDeliveriesPageController() {
     },
     onError: (err: Error) =>
       toast.error(err.message || "Could not delete stop."),
+  });
+
+  const deleteAllMutation = useMutation({
+    mutationFn: async () => {
+      const currentStops = stopsQuery.data ?? [];
+      if (currentStops.length === 0) return 0;
+      const results = await Promise.all(
+        currentStops.map((s) => deliveryStopsRepository.delete(s.id)),
+      );
+      const failed = results.filter((r) => !isAppSuccess(r));
+      if (failed.length) {
+        throw new Error(
+          `Deleted ${currentStops.length - failed.length}/${currentStops.length}. ${failed[0]?.message ?? "Some deletions failed."}`,
+        );
+      }
+      return currentStops.length;
+    },
+    onSuccess: async (count) => {
+      toast.success(`Removed ${count} delivery stops.`);
+      await queryClient.invalidateQueries({
+        queryKey: ["delivery-stops", effectiveOrgId],
+      });
+      if (selectedPlanId !== ALL_PLANS) {
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.routes(selectedPlanId),
+        });
+      }
+    },
+    onError: (err: Error) =>
+      toast.error(err.message || "Could not delete all stops."),
   });
 
   const importMutation = useMutation({
@@ -176,6 +251,7 @@ export function useDeliveriesPageController() {
       }
       const res = await routePlanningRepository.generateDraftRoutes({
         planningWindowId: selectedPlanId,
+        planningStrategy,
       });
       if (!isAppSuccess(res) || !res.body)
         throw new Error(appErrorMessage(res));
@@ -191,6 +267,86 @@ export function useDeliveriesPageController() {
     },
     onError: (err: Error) =>
       toast.error(err.message || "Could not generate routes."),
+  });
+
+  const deletePlanMutation = useMutation({
+    mutationFn: async () => {
+      if (selectedPlanId === ALL_PLANS) {
+        throw new Error("Select a planning window first.");
+      }
+      await deletePlanningWindowUseCase(selectedPlanId);
+    },
+    onSuccess: async () => {
+      toast.success("Planning window deleted.");
+      setSelectedPlanId(ALL_PLANS);
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.planningWindows(effectiveOrgId),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["delivery-stops", effectiveOrgId],
+      });
+    },
+    onError: (err: Error) =>
+      toast.error(err.message || "Could not delete planning window."),
+  });
+
+  const exportInstructionsMutation = useMutation({
+    mutationFn: async () => {
+      if (selectedPlanId === ALL_PLANS) {
+        throw new Error("Select a planning window first.");
+      }
+      const res = await routePlanningRepository.getDriverInstructions(selectedPlanId);
+      if (!isAppSuccess(res) || !res.body) throw new Error(appErrorMessage(res));
+      return res.body;
+    },
+    onSuccess: (data) => {
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: "application/json;charset=utf-8",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `driver-instructions-${data.planningWindowId}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Driver instructions exported.");
+    },
+    onError: (err: Error) =>
+      toast.error(err.message || "Could not export instructions."),
+  });
+
+  const exportFleetPdfMutation = useMutation({
+    mutationFn: async () => {
+      if (selectedPlanId === ALL_PLANS) throw new Error("Select a planning window first.");
+      return routePlanningRepository.downloadFleetReportPdf(selectedPlanId);
+    },
+    onSuccess: (blob) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `fleet-report-${selectedPlanId}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Fleet report downloaded.");
+    },
+    onError: (err: Error) => toast.error(err.message || "Could not download fleet PDF."),
+  });
+
+  const exportDriversZipMutation = useMutation({
+    mutationFn: async () => {
+      if (selectedPlanId === ALL_PLANS) throw new Error("Select a planning window first.");
+      return routePlanningRepository.downloadDriverReportsZip(selectedPlanId);
+    },
+    onSuccess: (blob) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `driver-reports-${selectedPlanId}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Driver reports downloaded.");
+    },
+    onError: (err: Error) => toast.error(err.message || "Could not download driver ZIP."),
   });
 
   const downloadTemplate = async () => {
@@ -239,10 +395,21 @@ export function useDeliveriesPageController() {
       longitude,
       phone,
       serviceMinutes,
+      serviceDate,
+      timeSection,
+      timeSections: TIME_SECTIONS,
+      planningStrategy,
+      planningStrategies: PLANNING_STRATEGIES,
+      isAdmin,
       addPending: addMutation.isPending,
       deletePending: deleteMutation.isPending,
+      deleteAllPending: deleteAllMutation.isPending,
       importPending: importMutation.isPending,
       draftPending: draftMutation.isPending,
+      exportPending: exportInstructionsMutation.isPending,
+      fleetPdfPending: exportFleetPdfMutation.isPending,
+      driversZipPending: exportDriversZipMutation.isPending,
+      deletePlanPending: deletePlanMutation.isPending,
       lastImport,
       fileInputRef,
     },
@@ -255,6 +422,9 @@ export function useDeliveriesPageController() {
       setLongitude,
       setPhone,
       setServiceMinutes,
+      setServiceDate,
+      setTimeSection,
+      setPlanningStrategy,
       submitAddStop: () => addMutation.mutate(),
       deleteStop: (id: string) => {
         if (
@@ -264,10 +434,35 @@ export function useDeliveriesPageController() {
           return;
         deleteMutation.mutate(id);
       },
+      deleteAllStops: () => {
+        const currentCount = stopsQuery.data?.length ?? 0;
+        if (currentCount === 0) return;
+        if (
+          typeof window !== "undefined" &&
+          !window.confirm(`Delete all ${currentCount} stops in current list?`)
+        )
+          return;
+        deleteAllMutation.mutate();
+      },
       downloadTemplate,
       onPickExcel,
       onFileChange,
       generateDraftRoutes: () => draftMutation.mutate(),
+      exportDriverInstructions: () => exportInstructionsMutation.mutate(),
+      exportFleetPdf: () => exportFleetPdfMutation.mutate(),
+      exportDriversZip: () => exportDriversZipMutation.mutate(),
+      deleteSelectedPlan: () => {
+        if (selectedPlanId === ALL_PLANS) {
+          toast.error("Select a planning window first.");
+          return;
+        }
+        if (
+          typeof window !== "undefined" &&
+          !window.confirm("Delete selected planning window?")
+        )
+          return;
+        deletePlanMutation.mutate();
+      },
       openAddDialog: () => {
         resetAddForm();
         setAddDialogOpen(true);

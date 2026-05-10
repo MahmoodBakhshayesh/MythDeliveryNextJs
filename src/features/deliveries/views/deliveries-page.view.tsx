@@ -53,10 +53,21 @@ export function DeliveriesPageView({
     longitude,
     phone,
     serviceMinutes,
+    serviceDate,
+    timeSection,
+    timeSections,
+    planningStrategy,
+    planningStrategies,
+    isAdmin,
     addPending,
     deletePending,
+    deleteAllPending,
     importPending,
     draftPending,
+    exportPending,
+    fleetPdfPending,
+    driversZipPending,
+    deletePlanPending,
     lastImport,
     fileInputRef,
   } = viewState;
@@ -178,6 +189,77 @@ export function DeliveriesPageView({
             <Route className="me-2 size-4" />
             {draftPending ? t("generatingRoutes") : t("generateDraftRoutes")}
           </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => actions.exportDriverInstructions()}
+            disabled={exportPending || !hasSpecificPlan}
+          >
+            <Download className="me-2 size-4" />
+            {exportPending ? "Exporting..." : "Export driver instructions"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => actions.exportFleetPdf()}
+            disabled={fleetPdfPending || !hasSpecificPlan}
+          >
+            <Download className="me-2 size-4" />
+            {fleetPdfPending ? "Downloading..." : "Fleet PDF"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => actions.exportDriversZip()}
+            disabled={driversZipPending || !hasSpecificPlan}
+          >
+            <Download className="me-2 size-4" />
+            {driversZipPending ? "Downloading..." : "Driver PDFs (ZIP)"}
+          </Button>
+          <div className="min-w-[210px]">
+            <Select
+              value={planningStrategy}
+              onValueChange={(v) =>
+                actions.setPlanningStrategy((v as typeof planningStrategy) ?? "SpatialCell")
+              }
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={t("planningStrategy")} />
+              </SelectTrigger>
+              <SelectContent>
+                {planningStrategies.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {t(`planningStrategies.${s}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button
+            type="button"
+            variant="destructive"
+            size="sm"
+            onClick={() => actions.deleteSelectedPlan()}
+            disabled={deletePlanPending || !hasSpecificPlan}
+          >
+            <Trash2 className="me-2 size-4" />
+            {deletePlanPending ? t("deletingPlan") : t("deleteSelectedPlan")}
+          </Button>
+          {isAdmin ? (
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              onClick={() => actions.deleteAllStops()}
+              disabled={deleteAllPending || !stops?.length}
+            >
+              <Trash2 className="me-2 size-4" />
+              {deleteAllPending ? t("deletingAll") : t("deleteAll")}
+            </Button>
+          ) : null}
         </div>
         {!planningWindows?.length ? (
           <p className="text-muted-foreground px-6 pb-6 text-sm">
@@ -292,6 +374,35 @@ export function DeliveriesPageView({
                   onChange={(e) => actions.setLongitude(e.target.value)}
                   placeholder="51.3890"
                 />
+              </div>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="stop-service-date">Service date (optional)</Label>
+                <Input
+                  id="stop-service-date"
+                  type="date"
+                  value={serviceDate}
+                  onChange={(e) => actions.setServiceDate(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Time section (optional)</Label>
+                <Select
+                  value={timeSection}
+                  onValueChange={(v) => actions.setTimeSection(v ?? "")}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select section" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {timeSections.map((s) => (
+                      <SelectItem key={s.value} value={String(s.value)}>
+                        {s.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
