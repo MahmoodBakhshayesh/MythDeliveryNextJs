@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -16,6 +17,7 @@ export function useLoginController() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const setSession = useAuthStore((s) => s.setSession);
+  const t = useTranslations("Auth");
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -29,7 +31,7 @@ export function useLoginController() {
     onSuccess: (body) => {
       setSession(body);
       void queryClient.invalidateQueries();
-      toast.success("Welcome back");
+      toast.success(t("welcomeBack"));
       router.replace("/dashboard");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -40,7 +42,7 @@ export function useLoginController() {
     onSuccess: (body) => {
       setSession(body);
       void queryClient.invalidateQueries();
-      toast.success("Signed in with Google");
+      toast.success(t("signedInGoogle"));
       router.replace("/dashboard");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -50,7 +52,7 @@ export function useLoginController() {
     mutationFn: () => requestOtpUseCase(email.trim()),
     onSuccess: () => {
       setOtpSent(true);
-      toast.message("Check your email for the code (dev: see API logs).");
+      toast.message(t("otpSent"));
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -60,7 +62,7 @@ export function useLoginController() {
     onSuccess: (body) => {
       setSession(body);
       void queryClient.invalidateQueries();
-      toast.success("Signed in");
+      toast.success(t("signedIn"));
       router.replace("/dashboard");
     },
     onError: (e: Error) => toast.error(e.message),

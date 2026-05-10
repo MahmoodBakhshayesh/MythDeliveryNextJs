@@ -9,6 +9,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 
 function makeQueryClient() {
   return new QueryClient({
+
     
     defaultOptions: {
       queries: {

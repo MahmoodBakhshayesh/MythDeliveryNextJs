@@ -1,6 +1,7 @@
 "use client";
 
 import { Package } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -21,6 +22,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import type { PackagesPageViewModel } from "@/features/packages/controllers/packages-page.controller";
 
 export function PackagesPageView({ viewState, actions }: PackagesPageViewModel) {
+  const t = useTranslations("UiPackages");
+  const tc = useTranslations("Common");
   const {
     organizations,
     selectedOrgId,
@@ -35,10 +38,10 @@ export function PackagesPageView({ viewState, actions }: PackagesPageViewModel) 
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-          Packages
+          {t("title")}
         </h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          From{" "}
+          {t("subtitleFromApi")}{" "}
           <code className="rounded bg-muted px-1">
             GET /api/deliverypackages?organizationId=
           </code>
@@ -46,14 +49,14 @@ export function PackagesPageView({ viewState, actions }: PackagesPageViewModel) 
       </div>
 
       <div className="max-w-md space-y-2">
-        <Label>Organization</Label>
+        <Label>{tc("organization")}</Label>
         <Select
-          value={selectedOrgId || undefined}
+          value={selectedOrgId}
           onValueChange={(v) => actions.setOrgId(v)}
           disabled={orgsLoading || !organizations?.length}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Select organization" />
+            <SelectValue placeholder={tc("selectOrganization")} />
           </SelectTrigger>
           <SelectContent>
             {organizations?.map((o) => (
@@ -76,7 +79,9 @@ export function PackagesPageView({ viewState, actions }: PackagesPageViewModel) 
                   <CardTitle className="flex flex-wrap items-center gap-2 text-base">
                     <Package className="size-4" />
                     <span className="font-mono">{p.barcode}</span>
-                    <Badge variant="outline">Status {String(p.status)}</Badge>
+                    <Badge variant="outline">
+                      {t("statusBadge")} {String(p.status)}
+                    </Badge>
                   </CardTitle>
                   <CardDescription className="font-mono text-xs">
                     {p.id}
@@ -89,7 +94,7 @@ export function PackagesPageView({ viewState, actions }: PackagesPageViewModel) 
       )}
 
       {!packagesLoading && packages?.length === 0 && (
-        <p className="text-muted-foreground text-sm">No packages for this org.</p>
+        <p className="text-muted-foreground text-sm">{t("noPackages")}</p>
       )}
     </div>
   );

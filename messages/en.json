@@ -1,0 +1,203 @@
+{
+  "Metadata": {
+    "title": "Myth Delivery",
+    "description": "Fleet & delivery console for MythDeliveryWebApi"
+  },
+  "Common": {
+    "redirecting": "Redirecting…",
+    "cancel": "Cancel",
+    "save": "Save",
+    "language": "Language",
+    "english": "English",
+    "persian": "Persian (فارسی)",
+    "signedOut": "Signed out",
+    "saving": "Saving…",
+    "creating": "Creating…",
+    "organization": "Organization",
+    "selectOrganization": "Select organization",
+    "name": "Name",
+    "status": "Status",
+    "edit": "Edit",
+    "userFallback": "User",
+    "email": "Email",
+    "password": "Password",
+    "phone": "Phone"
+  },
+  "Nav": {
+    "brand": "Myth Delivery",
+    "dashboard": "Dashboard",
+    "organizations": "Organizations",
+    "users": "Users",
+    "planningMap": "Planning map",
+    "fleet": "Fleet",
+    "packages": "Packages",
+    "live": "Live tracking",
+    "profile": "Profile",
+    "logout": "Log out",
+    "openMenu": "Open menu"
+  },
+  "Auth": {
+    "welcomeBack": "Welcome back",
+    "signedInGoogle": "Signed in with Google",
+    "signedIn": "Signed in",
+    "loginTitle": "Sign in",
+    "subtitleApi": "Connect to your Myth Delivery API",
+    "tabsPassword": "Password",
+    "tabsGoogle": "Google",
+    "tabsEmailCode": "Email code",
+    "username": "Username",
+    "password": "Password",
+    "signIn": "Sign in",
+    "googleCredential": "Google credential (JWT)",
+    "signInGoogle": "Sign in with Google",
+    "email": "Email",
+    "sendCode": "Send code",
+    "verificationCode": "Verification code",
+    "verify": "Verify",
+    "back": "Back",
+    "otpSent": "Check your email for the code (dev: see API logs).",
+    "signingIn": "Signing in…",
+    "sending": "Sending…",
+    "verifying": "Verifying…",
+    "otpCodeLabel": "6-digit code",
+    "verifySignIn": "Verify & sign in",
+    "useDifferentEmail": "Use a different email",
+    "googleTabHelp": "Paste the Google ID token from your client (GIS / One Tap). Ensure",
+    "googleClientId": "Google:ClientId",
+    "googleTabHelpEnd": "is set on the API.",
+    "idToken": "ID token",
+    "usernamePlaceholder": "admin or your username",
+    "emailPlaceholder": "you@company.com",
+    "googleTokenPlaceholder": "eyJhbGciOiJSUzI1NiIs..."
+  },
+  "Home": {
+    "redirecting": "Redirecting…"
+  },
+  "Dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Myth Delivery console — wired to your ASP.NET Core API via React Query, Zustand auth, and SignalR for realtime updates.",
+    "orgsTitle": "Organizations",
+    "orgsDesc": "Browse sandbox and tenant orgs.",
+    "fleetTitle": "Fleet",
+    "fleetDesc": "Vehicles, drivers, planning windows.",
+    "packagesTitle": "Packages",
+    "packagesDesc": "Track deliveries and QR labels.",
+    "liveTitle": "Live tracking",
+    "liveDesc": "SignalR feed for package status."
+  },
+  "UiOrganizations": {
+    "title": "Organizations",
+    "subtitleFromApi": "From",
+    "addOrganization": "Add organization",
+    "dialogTitle": "New organization",
+    "nameLabel": "Name",
+    "namePlaceholder": "Organization name",
+    "create": "Create"
+  },
+  "UiFleet": {
+    "title": "Fleet",
+    "subtitleFromApi": "Vehicles from",
+    "addVehicle": "Add vehicle",
+    "vehicleDialogTitle": "Add vehicle",
+    "vehicleNameLabel": "Name",
+    "vehicleNamePlaceholder": "Vehicle name",
+    "plateLabel": "Plate (optional)",
+    "typeLabel": "Type (optional)",
+    "typePlaceholder": "Van, truck…",
+    "active": "Active",
+    "inactive": "Inactive",
+    "vehicleFallback": "Vehicle",
+    "noVehicles": "No vehicles for this org.",
+    "addVehicleSubmit": "Add vehicle"
+  },
+  "UiUsers": {
+    "title": "Users",
+    "subtitle": "Manage accounts: assign Admin or Member, edit profile fields, lock access.",
+    "nonAdminTitle": "Users",
+    "nonAdminBody": "Your session does not show the Admin role. Log out and sign in again, or confirm your account has the Admin role in the database.",
+    "addUser": "Add user",
+    "locked": "Locked",
+    "addTitle": "Add user",
+    "username": "Username",
+    "emailOptional": "Email (optional)",
+    "phoneOptional": "Phone (optional)",
+    "role": "Role",
+    "selectRole": "Select role",
+    "confirmPassword": "Confirm password",
+    "createUser": "Create user",
+    "editTitle": "Edit user",
+    "displayName": "Display name",
+    "lockAccount": "Lock account (cannot sign in until unlocked)"
+  },
+  "UiPackages": {
+    "title": "Packages",
+    "subtitleFromApi": "From",
+    "statusBadge": "Status",
+    "noPackages": "No packages for this org."
+  },
+  "UiProfile": {
+    "title": "Profile",
+    "subtitleApi": "GET/PUT /api/users/me",
+    "accountTitle": "Account",
+    "verified": "(verified)",
+    "notVerified": "(not verified)",
+    "upload": "Upload",
+    "remove": "Remove",
+    "detailsTitle": "Details",
+    "displayName": "Display name",
+    "bio": "Bio",
+    "saveProfile": "Save profile",
+    "passwordTitle": "Password",
+    "passwordHint": "Only for accounts with a password (not OTP/Google-only).",
+    "current": "Current",
+    "newPassword": "New",
+    "confirmNew": "Confirm new",
+    "changePassword": "Change password",
+    "rolesPrefix": "Roles:"
+  },
+  "UiLive": {
+    "title": "Live tracking",
+    "subtitle": "SignalR hub",
+    "subtitleSubscribe": "— subscribes via",
+    "subtitleEvents": "Events:",
+    "waitingUpdates": "Waiting for package updates…",
+    "eventLineStatus": "status"
+  },
+  "UiMap": {
+    "title": "Planning map",
+    "subtitle": "Routes and stops for the selected planning window. Click the map to add a delivery stop at that location.",
+    "planningWindow": "Planning window",
+    "planningWindowPlaceholder": "Planning window",
+    "regionAlgorithm": "Region outline algorithm",
+    "outlineStylePlaceholder": "Outline style",
+    "failedLoadMap": "Failed to load map data.",
+    "emptySelectOrgWindow": "Select an organization and planning window.",
+    "emptyNoData": "No data or choose another window.",
+    "routesTitle": "Routes",
+    "routesDesc": "Shaded regions use the selected outline algorithm; lines follow stop sequence.",
+    "noRoutes": "No routes for this window yet.",
+    "addStopTitle": "Add delivery stop",
+    "coordinates": "Coordinates",
+    "recipientName": "Recipient name",
+    "recipientPlaceholder": "Recipient name",
+    "addStop": "Add stop",
+    "polygon": {
+      "convexHull": {
+        "label": "Convex hull",
+        "description": "Outermost polygon wrapping all stops—smooth and stable for sparse routes."
+      },
+      "concaveHull": {
+        "label": "Concave hull",
+        "description": "Tighter outline that follows clusters better than a plain convex hull."
+      },
+      "boundingBox": {
+        "label": "Bounding rectangle",
+        "description": "Axis-aligned box around stops—fast and easy to compare areas."
+      },
+      "none": {
+        "label": "Routes only",
+        "description": "Hide shaded regions; show sequence lines and stop markers only."
+      }
+    }
+  }
+}

@@ -1,7 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 import { logoutUseCase } from "@/features/auth/usecases/logout.usecase";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -9,11 +10,12 @@ import { useAuthStore } from "@/stores/auth-store";
 export function useLogoutController() {
   const router = useRouter();
   const clearSession = useAuthStore((s) => s.clearSession);
+  const t = useTranslations("Common");
 
   async function logout() {
     await logoutUseCase();
     clearSession();
-    toast.message("Signed out");
+    toast.message(t("signedOut"));
     router.replace("/login");
   }
 

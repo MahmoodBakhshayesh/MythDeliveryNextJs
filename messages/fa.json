@@ -1,0 +1,203 @@
+{
+  "Metadata": {
+    "title": "میث تحویل",
+    "description": "پنل ناوگان و تحویل برای MythDeliveryWebApi"
+  },
+  "Common": {
+    "redirecting": "در حال هدایت…",
+    "cancel": "انصراف",
+    "save": "ذخیره",
+    "language": "زبان",
+    "english": "English",
+    "persian": "فارسی",
+    "signedOut": "خارج شدید",
+    "saving": "در حال ذخیره…",
+    "creating": "در حال ایجاد…",
+    "organization": "سازمان",
+    "selectOrganization": "انتخاب سازمان",
+    "name": "نام",
+    "status": "وضعیت",
+    "edit": "ویرایش",
+    "userFallback": "کاربر",
+    "email": "ایمیل",
+    "password": "رمز عبور",
+    "phone": "تلفن"
+  },
+  "Nav": {
+    "brand": "میث تحویل",
+    "dashboard": "داشبورد",
+    "organizations": "سازمان‌ها",
+    "users": "کاربران",
+    "planningMap": "نقشه برنامه‌ریزی",
+    "fleet": "ناوگان",
+    "packages": "مرسوله‌ها",
+    "live": "ردیابی زنده",
+    "profile": "پروفایل",
+    "logout": "خروج",
+    "openMenu": "باز کردن منو"
+  },
+  "Auth": {
+    "welcomeBack": "خوش برگشتی",
+    "signedInGoogle": "ورود با گوگل",
+    "signedIn": "وارد شدید",
+    "loginTitle": "ورود",
+    "subtitleApi": "اتصال به API میث تحویل",
+    "tabsPassword": "رمز عبور",
+    "tabsGoogle": "گوگل",
+    "tabsEmailCode": "کد ایمیل",
+    "username": "نام کاربری",
+    "password": "رمز عبور",
+    "signIn": "ورود",
+    "googleCredential": "اعتبارنامه گوگل (JWT)",
+    "signInGoogle": "ورود با گوگل",
+    "email": "ایمیل",
+    "sendCode": "ارسال کد",
+    "verificationCode": "کد تأیید",
+    "verify": "تأیید",
+    "back": "بازگشت",
+    "otpSent": "ایمیل را برای کد بررسی کنید (توسعه: لاگ API).",
+    "signingIn": "در حال ورود…",
+    "sending": "در حال ارسال…",
+    "verifying": "در حال تأیید…",
+    "otpCodeLabel": "کد ۶ رقمی",
+    "verifySignIn": "تأیید و ورود",
+    "useDifferentEmail": "ایمیل دیگر",
+    "googleTabHelp": "توکن شناسه گوگل را از کلاینت بچسبانید. مطمئن شوید",
+    "googleClientId": "Google:ClientId",
+    "googleTabHelpEnd": "در API تنظیم شده است.",
+    "idToken": "توکن شناسه",
+    "usernamePlaceholder": "admin یا نام کاربری شما",
+    "emailPlaceholder": "you@company.com",
+    "googleTokenPlaceholder": "eyJhbGciOiJSUzI1NiIs..."
+  },
+  "Home": {
+    "redirecting": "در حال هدایت…"
+  },
+  "Dashboard": {
+    "title": "داشبورد",
+    "subtitle": "پنل میث تحویل — اتصال به API ASP.NET Core با React Query، احراز هویت Zustand و SignalR برای به‌روزرسانی زنده.",
+    "orgsTitle": "سازمان‌ها",
+    "orgsDesc": "سازمان‌های آزمایشی و مستاجر.",
+    "fleetTitle": "ناوگان",
+    "fleetDesc": "خودروها، رانندگان، پنجره‌های برنامه‌ریزی.",
+    "packagesTitle": "مرسوله‌ها",
+    "packagesDesc": "ردیابی تحویل و برچسب QR.",
+    "liveTitle": "ردیابی زنده",
+    "liveDesc": "جریان SignalR برای وضعیت مرسوله."
+  },
+  "UiOrganizations": {
+    "title": "سازمان‌ها",
+    "subtitleFromApi": "از",
+    "addOrganization": "افزودن سازمان",
+    "dialogTitle": "سازمان جدید",
+    "nameLabel": "نام",
+    "namePlaceholder": "نام سازمان",
+    "create": "ایجاد"
+  },
+  "UiFleet": {
+    "title": "ناوگان",
+    "subtitleFromApi": "خودروها از",
+    "addVehicle": "افزودن خودرو",
+    "vehicleDialogTitle": "افزودن خودرو",
+    "vehicleNameLabel": "نام",
+    "vehicleNamePlaceholder": "نام خودرو",
+    "plateLabel": "پلاک (اختیاری)",
+    "typeLabel": "نوع (اختیاری)",
+    "typePlaceholder": "ون، کامیون…",
+    "active": "فعال",
+    "inactive": "غیرفعال",
+    "vehicleFallback": "خودرو",
+    "noVehicles": "برای این سازمان خودرویی نیست.",
+    "addVehicleSubmit": "افزودن خودرو"
+  },
+  "UiUsers": {
+    "title": "کاربران",
+    "subtitle": "مدیریت حساب‌ها: نقش Admin یا Member، ویرایش پروفایل، قفل دسترسی.",
+    "nonAdminTitle": "کاربران",
+    "nonAdminBody": "نشست شما نقش Admin را نشان نمی‌دهد. خارج شوید و دوباره وارد شوید، یا نقش Admin را در پایگاه داده بررسی کنید.",
+    "addUser": "افزودن کاربر",
+    "locked": "قفل شده",
+    "addTitle": "افزودن کاربر",
+    "username": "نام کاربری",
+    "emailOptional": "ایمیل (اختیاری)",
+    "phoneOptional": "تلفن (اختیاری)",
+    "role": "نقش",
+    "selectRole": "انتخاب نقش",
+    "confirmPassword": "تکرار رمز",
+    "createUser": "ایجاد کاربر",
+    "editTitle": "ویرایش کاربر",
+    "displayName": "نام نمایشی",
+    "lockAccount": "قفل حساب (تا باز شدن نمی‌تواند وارد شود)"
+  },
+  "UiPackages": {
+    "title": "مرسوله‌ها",
+    "subtitleFromApi": "از",
+    "statusBadge": "وضعیت",
+    "noPackages": "برای این سازمان مرسوله‌ای نیست."
+  },
+  "UiProfile": {
+    "title": "پروفایل",
+    "subtitleApi": "GET/PUT /api/users/me",
+    "accountTitle": "حساب",
+    "verified": "(تأیید شده)",
+    "notVerified": "(تأیید نشده)",
+    "upload": "بارگذاری",
+    "remove": "حذف",
+    "detailsTitle": "جزئیات",
+    "displayName": "نام نمایشی",
+    "bio": "بیو",
+    "saveProfile": "ذخیره پروفایل",
+    "passwordTitle": "رمز عبور",
+    "passwordHint": "فقط برای حساب‌های دارای رمز (نه فقط OTP/گوگل).",
+    "current": "فعلی",
+    "newPassword": "جدید",
+    "confirmNew": "تکرار جدید",
+    "changePassword": "تغییر رمز",
+    "rolesPrefix": "نقش‌ها:"
+  },
+  "UiLive": {
+    "title": "ردیابی زنده",
+    "subtitle": "هاب SignalR",
+    "subtitleSubscribe": "— اشتراک با",
+    "subtitleEvents": "رویدادها:",
+    "waitingUpdates": "در انتظار به‌روزرسانی مرسوله…",
+    "eventLineStatus": "وضعیت"
+  },
+  "UiMap": {
+    "title": "نقشه برنامه‌ریزی",
+    "subtitle": "مسیرها و توقف‌ها برای پنجره انتخاب‌شده. برای افزودن توقف روی نقشه کلیک کنید.",
+    "planningWindow": "پنجره برنامه‌ریزی",
+    "planningWindowPlaceholder": "پنجره برنامه‌ریزی",
+    "regionAlgorithm": "الگوریتم محدوده ناحیه",
+    "outlineStylePlaceholder": "سبک دور خط",
+    "failedLoadMap": "بارگذاری داده نقشه ناموفق بود.",
+    "emptySelectOrgWindow": "سازمان و پنجره برنامه‌ریزی را انتخاب کنید.",
+    "emptyNoData": "داده‌ای نیست یا پنجره دیگری انتخاب کنید.",
+    "routesTitle": "مسیرها",
+    "routesDesc": "نواحی سایه‌دار با الگوریتم انتخاب‌شده؛ خطوط دنباله توقف‌ها را نشان می‌دهند.",
+    "noRoutes": "هنوز مسیری برای این پنجره نیست.",
+    "addStopTitle": "افزودن توقف تحویل",
+    "coordinates": "مختصات",
+    "recipientName": "نام گیرنده",
+    "recipientPlaceholder": "نام گیرنده",
+    "addStop": "افزودن توقف",
+    "polygon": {
+      "convexHull": {
+        "label": "پوش محدب",
+        "description": "چندضلعی بیرونی دور همه توقف‌ها — برای مسیرهای پراکنده پایدار است."
+      },
+      "concaveHull": {
+        "label": "پوش مقعر",
+        "description": "خط دور تنگ‌تر که خوشه‌ها را بهتر دنبال می‌کند."
+      },
+      "boundingBox": {
+        "label": "مستطیل محاطی",
+        "description": "جعبه هم‌محور دور توقف‌ها — سریع و برای مقایسه مساحت."
+      },
+      "none": {
+        "label": "فقط مسیرها",
+        "description": "پنهان کردن نواحی سایه‌دار؛ فقط خطوط توالی و نشانگر توقف."
+      }
+    }
+  }
+}

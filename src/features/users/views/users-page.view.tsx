@@ -1,6 +1,7 @@
 "use client";
 
 import { Pencil, Plus } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -29,6 +30,8 @@ import { Badge } from "@/components/ui/badge";
 import type { UsersPageViewModel } from "@/features/users/controllers/users-page.controller";
 
 export function UsersPageView({ viewState, actions }: UsersPageViewModel) {
+  const t = useTranslations("UiUsers");
+  const tc = useTranslations("Common");
   const {
     isAdmin,
     users,
@@ -54,11 +57,10 @@ export function UsersPageView({ viewState, actions }: UsersPageViewModel) {
   if (!isAdmin) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Users</h1>
-        <p className="text-muted-foreground text-sm">
-          Your session does not show the Admin role. Log out and sign in again, or
-          confirm your account has the Admin role in the database.
-        </p>
+        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
+          {t("nonAdminTitle")}
+        </h1>
+        <p className="text-muted-foreground text-sm">{t("nonAdminBody")}</p>
       </div>
     );
   }
@@ -67,14 +69,14 @@ export function UsersPageView({ viewState, actions }: UsersPageViewModel) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Users</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Manage accounts: assign Admin or Member, edit profile fields, lock access.
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
+            {t("title")}
+          </h1>
+          <p className="text-muted-foreground mt-1 text-sm">{t("subtitle")}</p>
         </div>
-        <Button type="button" onClick={() => actions.openAddDialog()}>
-          <Plus className="mr-2 size-4" />
-          Add user
+        <Button type="button" onClick={() => void actions.openAddDialog()}>
+          <Plus className="me-2 size-4" />
+          {t("addUser")}
         </Button>
       </div>
 
@@ -101,8 +103,8 @@ export function UsersPageView({ viewState, actions }: UsersPageViewModel) {
                     className="shrink-0"
                     onClick={() => actions.openEdit(u)}
                   >
-                    <Pencil className="mr-1 size-3.5" />
-                    Edit
+                    <Pencil className="me-1 size-3.5" />
+                    {tc("edit")}
                   </Button>
                 </div>
                 <CardDescription className="space-y-1">
@@ -115,7 +117,7 @@ export function UsersPageView({ viewState, actions }: UsersPageViewModel) {
                     ))}
                     {u.isLockedOut ? (
                       <Badge variant="destructive" className="text-xs">
-                        Locked
+                        {t("locked")}
                       </Badge>
                     ) : null}
                   </span>
@@ -129,11 +131,11 @@ export function UsersPageView({ viewState, actions }: UsersPageViewModel) {
       <Dialog open={dialogOpen} onOpenChange={actions.setDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Add user</DialogTitle>
+            <DialogTitle>{t("addTitle")}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-3">
             <div className="space-y-2">
-              <Label htmlFor="u-name">Username</Label>
+              <Label htmlFor="u-name">{t("username")}</Label>
               <Input
                 id="u-name"
                 value={userName}
@@ -142,7 +144,7 @@ export function UsersPageView({ viewState, actions }: UsersPageViewModel) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="u-email">Email (optional)</Label>
+              <Label htmlFor="u-email">{t("emailOptional")}</Label>
               <Input
                 id="u-email"
                 type="email"
@@ -151,7 +153,7 @@ export function UsersPageView({ viewState, actions }: UsersPageViewModel) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="u-phone">Phone (optional)</Label>
+              <Label htmlFor="u-phone">{t("phoneOptional")}</Label>
               <Input
                 id="u-phone"
                 value={phoneNumber}
@@ -159,17 +161,17 @@ export function UsersPageView({ viewState, actions }: UsersPageViewModel) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="u-role">Role</Label>
+              <Label htmlFor="u-role">{t("role")}</Label>
               <Select
-                value={roleId || undefined}
+                value={roleId}
                 onValueChange={(v) => actions.setRoleId(v ?? "")}
               >
                 <SelectTrigger id="u-role">
-                  <SelectValue placeholder="Select role" />
+                  <SelectValue placeholder={t("selectRole")} />
                 </SelectTrigger>
                 <SelectContent>
                   {roles?.map((r) => (
-                    <SelectItem key={r.id} value={r.id}>
+                    <SelectItem key={r.id} value={String(r.id)}>
                       {r.name}
                     </SelectItem>
                   ))}
@@ -177,7 +179,7 @@ export function UsersPageView({ viewState, actions }: UsersPageViewModel) {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="u-pw">Password</Label>
+              <Label htmlFor="u-pw">{tc("password")}</Label>
               <Input
                 id="u-pw"
                 type="password"
@@ -186,7 +188,7 @@ export function UsersPageView({ viewState, actions }: UsersPageViewModel) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="u-pw2">Confirm password</Label>
+              <Label htmlFor="u-pw2">{t("confirmPassword")}</Label>
               <Input
                 id="u-pw2"
                 type="password"
@@ -201,10 +203,10 @@ export function UsersPageView({ viewState, actions }: UsersPageViewModel) {
               type="button"
               onClick={() => actions.setDialogOpen(false)}
             >
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button type="button" disabled={addPending} onClick={actions.submitAdd}>
-              {addPending ? "Creating…" : "Create user"}
+              {addPending ? tc("creating") : t("createUser")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -213,11 +215,11 @@ export function UsersPageView({ viewState, actions }: UsersPageViewModel) {
       <Dialog open={editOpen} onOpenChange={actions.setEditOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit user</DialogTitle>
+            <DialogTitle>{t("editTitle")}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-3">
             <div className="space-y-2">
-              <Label htmlFor="e-email">Email</Label>
+              <Label htmlFor="e-email">{tc("email")}</Label>
               <Input
                 id="e-email"
                 type="email"
@@ -226,7 +228,7 @@ export function UsersPageView({ viewState, actions }: UsersPageViewModel) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="e-phone">Phone</Label>
+              <Label htmlFor="e-phone">{tc("phone")}</Label>
               <Input
                 id="e-phone"
                 value={editPhone}
@@ -234,7 +236,7 @@ export function UsersPageView({ viewState, actions }: UsersPageViewModel) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="e-dn">Display name</Label>
+              <Label htmlFor="e-dn">{t("displayName")}</Label>
               <Input
                 id="e-dn"
                 value={editDisplayName}
@@ -250,7 +252,7 @@ export function UsersPageView({ viewState, actions }: UsersPageViewModel) {
                 onChange={(e) => actions.setEditLocked(e.target.checked)}
               />
               <Label htmlFor="e-lock" className="font-normal">
-                Lock account (cannot sign in until unlocked)
+                {t("lockAccount")}
               </Label>
             </div>
           </div>
@@ -260,14 +262,14 @@ export function UsersPageView({ viewState, actions }: UsersPageViewModel) {
               type="button"
               onClick={() => actions.setEditOpen(false)}
             >
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button
               type="button"
               disabled={updatePending}
               onClick={() => actions.submitEdit()}
             >
-              {updatePending ? "Saving…" : "Save"}
+              {updatePending ? tc("saving") : tc("save")}
             </Button>
           </DialogFooter>
         </DialogContent>

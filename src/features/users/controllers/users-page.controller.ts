@@ -80,13 +80,27 @@ export function useUsersPageController() {
     setRoleId("");
   }
 
-  function openAddDialog() {
+  /** Loads roles first so the role dropdown is never empty due to a fetch race. */
+  async function openAddDialog() {
     resetAddForm();
-    const roles = rolesQuery.data;
-    const defaultRole =
-      roles?.find((r) => r.name.toLowerCase() === "member") ?? roles?.[0];
-    if (defaultRole) setRoleId(defaultRole.id);
-    setDialogOpen(true);
+    try {
+      const roles = await queryClient.ensureQueryData({
+        queryKey: queryKeys.roles,
+        queryFn: () => listRolesUseCase(),
+      });
+      if (!roles.length) {
+        toast.error("No roles are configured on the server.");
+        return;
+      }
+      const defaultRole =
+        roles.find((r) => r.name.toLowerCase() === "member") ?? roles[0];
+      setRoleId(String(defaultRole.id));
+      setDialogOpen(true);
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "Could not load roles for this form.",
+      );
+    }
   }
 
   function submitAdd() {

@@ -1,6 +1,7 @@
 "use client";
 
 import { Building2, Plus } from "lucide-react";
+import { useTranslations } from "next-intl";
 import {
   Card,
   CardDescription,
@@ -24,6 +25,8 @@ export function OrganizationsListView({
   viewState,
   actions,
 }: OrganizationsListViewModel) {
+  const t = useTranslations("UiOrganizations");
+  const tc = useTranslations("Common");
   const {
     organizations,
     isLoading,
@@ -39,17 +42,17 @@ export function OrganizationsListView({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-            Organizations
+            {t("title")}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            From{" "}
+            {t("subtitleFromApi")}{" "}
             <code className="rounded bg-muted px-1">GET /api/organizations</code>
           </p>
         </div>
         {isAdmin ? (
           <Button type="button" onClick={() => actions.setAddOpen(true)}>
-            <Plus className="mr-2 size-4" />
-            Add organization
+            <Plus className="me-2 size-4" />
+            {t("addOrganization")}
           </Button>
         ) : null}
       </div>
@@ -84,15 +87,15 @@ export function OrganizationsListView({
       <Dialog open={addOpen} onOpenChange={actions.setAddOpen}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>New organization</DialogTitle>
+            <DialogTitle>{t("dialogTitle")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-2">
-            <Label htmlFor="org-name">Name</Label>
+            <Label htmlFor="org-name">{t("nameLabel")}</Label>
             <Input
               id="org-name"
               value={newOrgName}
               onChange={(e) => actions.setNewOrgName(e.target.value)}
-              placeholder="Organization name"
+              placeholder={t("namePlaceholder")}
             />
           </div>
           <DialogFooter className="gap-2 sm:justify-end">
@@ -101,14 +104,14 @@ export function OrganizationsListView({
               type="button"
               onClick={() => actions.setAddOpen(false)}
             >
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button
               type="button"
               disabled={addPending}
               onClick={() => actions.submitAdd()}
             >
-              {addPending ? "Saving…" : "Create"}
+              {addPending ? tc("saving") : t("create")}
             </Button>
           </DialogFooter>
         </DialogContent>

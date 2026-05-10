@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -28,6 +27,9 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { useLogoutController } from "@/features/auth/controllers/logout.controller";
 import { useAuthStore } from "@/stores/auth-store";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { LocaleSwitcher } from "@/components/locale-switcher";
 
 export type ShellNavItem = {
   href: string;
@@ -74,32 +76,36 @@ export function MainShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { logout } = useLogoutController();
   const username = useAuthStore((s) => s.username);
+  const t = useTranslations("Nav");
+  const tc = useTranslations("Common");
+
   const navItems = useMemo((): ShellNavItem[] => {
     return [
-      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/organizations", label: "Organizations", icon: Building2 },
-      { href: "/users", label: "Users", icon: Users },
-      { href: "/map", label: "Planning map", icon: MapPinned },
-      { href: "/fleet", label: "Fleet", icon: Truck },
-      { href: "/packages", label: "Packages", icon: Package },
-      { href: "/live", label: "Live tracking", icon: Radio },
-      { href: "/profile", label: "Profile", icon: UserRound },
+      { href: "/dashboard", label: t("dashboard"), icon: LayoutDashboard },
+      { href: "/organizations", label: t("organizations"), icon: Building2 },
+      { href: "/users", label: t("users"), icon: Users },
+      { href: "/map", label: t("planningMap"), icon: MapPinned },
+      { href: "/fleet", label: t("fleet"), icon: Truck },
+      { href: "/packages", label: t("packages"), icon: Package },
+      { href: "/live", label: t("live"), icon: Radio },
+      { href: "/profile", label: t("profile"), icon: UserRound },
     ];
-  }, []);
+  }, [t]);
 
   return (
     <div className="flex min-h-screen flex-col bg-background md:flex-row">
-      <aside className="hidden w-64 shrink-0 border-r bg-sidebar text-sidebar-foreground md:flex md:flex-col">
+      <aside className="hidden w-64 shrink-0 border-e bg-sidebar text-sidebar-foreground md:flex md:flex-col">
         <div className="flex h-14 items-center border-b border-sidebar-border px-4">
           <Link href="/dashboard" className="font-semibold tracking-tight">
-            Myth Delivery
+            {t("brand")}
           </Link>
         </div>
         <div className="flex flex-1 flex-col gap-2 p-3">
+          <LocaleSwitcher />
           <NavLinks items={navItems} />
           <Separator className="my-2 bg-sidebar-border" />
           <p className="truncate px-3 text-xs text-muted-foreground">
-            {username ?? "User"}
+            {username ?? tc("userFallback")}
           </p>
           <Button
             variant="outline"
@@ -108,7 +114,7 @@ export function MainShell({ children }: { children: React.ReactNode }) {
             onClick={() => void logout()}
           >
             <LogOut className="size-4" />
-            Log out
+            {t("logout")}
           </Button>
         </div>
       </aside>
@@ -118,16 +124,17 @@ export function MainShell({ children }: { children: React.ReactNode }) {
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger
               render={
-                <Button variant="outline" size="icon" aria-label="Open menu">
+                <Button variant="outline" size="icon" aria-label={t("openMenu")}>
                   <Menu className="size-4" />
                 </Button>
               }
             />
             <SheetContent side="left" className="w-72">
               <SheetHeader>
-                <SheetTitle>Myth Delivery</SheetTitle>
+                <SheetTitle>{t("brand")}</SheetTitle>
               </SheetHeader>
               <div className="mt-6 flex flex-col gap-4">
+                <LocaleSwitcher />
                 <NavLinks
                   items={navItems}
                   onNavigate={() => setMobileOpen(false)}
@@ -140,13 +147,16 @@ export function MainShell({ children }: { children: React.ReactNode }) {
                     void logout();
                   }}
                 >
-                  <LogOut className="mr-2 size-4" />
-                  Log out
+                  <LogOut className="me-2 size-4" />
+                  {t("logout")}
                 </Button>
               </div>
             </SheetContent>
           </Sheet>
-          <span className="font-medium">Myth Delivery</span>
+          <span className="font-medium">{t("brand")}</span>
+          <div className="ms-auto w-[140px] shrink-0">
+            <LocaleSwitcher />
+          </div>
         </header>
 
         <main className="mx-auto w-full max-w-6xl flex-1 p-4 md:p-8">{children}</main>

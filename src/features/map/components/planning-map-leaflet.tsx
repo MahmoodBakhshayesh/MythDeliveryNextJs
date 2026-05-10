@@ -107,6 +107,7 @@ export function PlanningMapLeaflet({
   const hasBounds = overlay.boundsPoints.length > 0;
 
   return (
+    <div dir="ltr" className="size-full min-h-[420px]">
     <MapContainer
       center={DEFAULT_CENTER}
       zoom={DEFAULT_ZOOM}
@@ -127,5 +128,6 @@ export function PlanningMapLeaflet({
       ))}
       <StopMarkers stops={overlay.stops} />
     </MapContainer>
+    </div>
   );
 }

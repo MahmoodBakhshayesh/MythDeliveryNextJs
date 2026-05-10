@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -44,6 +45,8 @@ const PlanningMapLeaflet = dynamic(
 );
 
 export function PlanningMapView({ viewState, actions }: PlanningMapViewModel) {
+  const t = useTranslations("UiMap");
+  const tc = useTranslations("Common");
   const {
     organizations,
     planningWindows,
@@ -76,24 +79,21 @@ export function PlanningMapView({ viewState, actions }: PlanningMapViewModel) {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-          Planning map
+          {t("title")}
         </h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Routes and stops for the selected planning window. Click the map to add
-          a delivery stop at that location.
-        </p>
+        <p className="text-muted-foreground mt-1 text-sm">{t("subtitle")}</p>
       </div>
 
       <div className="flex max-w-2xl flex-col gap-4 sm:flex-row">
         <div className="flex-1 space-y-2">
-          <Label>Organization</Label>
+          <Label>{tc("organization")}</Label>
           <Select
-            value={selectedOrgId || undefined}
+            value={selectedOrgId}
             onValueChange={(v) => actions.setOrgId(v)}
             disabled={orgsLoading || !organizations?.length}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Organization" />
+              <SelectValue placeholder={tc("selectOrganization")} />
             </SelectTrigger>
             <SelectContent>
               {organizations?.map((o) => (
@@ -105,16 +105,16 @@ export function PlanningMapView({ viewState, actions }: PlanningMapViewModel) {
           </Select>
         </div>
         <div className="flex-1 space-y-2">
-          <Label>Planning window</Label>
+          <Label>{t("planningWindow")}</Label>
           <Select
-            value={selectedPlanningWindowId || undefined}
+            value={selectedPlanningWindowId}
             onValueChange={(v) => actions.setPlanningWindowId(v)}
             disabled={
               selectorsBusy || !planningWindows?.length || !selectedOrgId
             }
           >
             <SelectTrigger>
-              <SelectValue placeholder="Planning window" />
+              <SelectValue placeholder={t("planningWindowPlaceholder")} />
             </SelectTrigger>
             <SelectContent>
               {planningWindows?.map((w) => (
@@ -128,7 +128,7 @@ export function PlanningMapView({ viewState, actions }: PlanningMapViewModel) {
       </div>
 
       <div className="max-w-2xl space-y-2">
-        <Label htmlFor="polygon-region">Region outline algorithm</Label>
+        <Label htmlFor="polygon-region">{t("regionAlgorithm")}</Label>
         <Select
           value={polygonRegionAlgorithm}
           onValueChange={(v) =>
@@ -137,26 +137,26 @@ export function PlanningMapView({ viewState, actions }: PlanningMapViewModel) {
           disabled={selectorsBusy}
         >
           <SelectTrigger id="polygon-region">
-            <SelectValue placeholder="Outline style" />
+            <SelectValue placeholder={t("outlineStylePlaceholder")} />
           </SelectTrigger>
           <SelectContent>
             {POLYGON_REGION_OPTIONS.map((opt) => (
               <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
+                {t(`polygon.${opt.value}.label`)}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
         {regionOption ? (
           <p className="text-muted-foreground text-xs leading-snug">
-            {regionOption.description}
+            {t(`polygon.${regionOption.value}.description`)}
           </p>
         ) : null}
       </div>
 
       {snapshotError ? (
         <p className="text-destructive text-sm">
-          {snapshotError.message || "Failed to load map data."}
+          {snapshotError.message || t("failedLoadMap")}
         </p>
       ) : null}
 
@@ -173,8 +173,8 @@ export function PlanningMapView({ viewState, actions }: PlanningMapViewModel) {
           ) : !snapshotLoading ? (
             <div className="text-muted-foreground flex size-full items-center justify-center p-6 text-center text-sm">
               {selectedOrgId && selectedPlanningWindowId
-                ? "No data or choose another window."
-                : "Select an organization and planning window."}
+                ? t("emptyNoData")
+                : t("emptySelectOrgWindow")}
             </div>
           ) : null}
         </div>
@@ -182,11 +182,8 @@ export function PlanningMapView({ viewState, actions }: PlanningMapViewModel) {
         <div className="space-y-3">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Routes</CardTitle>
-              <CardDescription>
-                Shaded regions use the selected outline algorithm; lines follow
-                stop sequence.
-              </CardDescription>
+              <CardTitle className="text-base">{t("routesTitle")}</CardTitle>
+              <CardDescription>{t("routesDesc")}</CardDescription>
             </CardHeader>
           </Card>
           <div className="flex flex-col gap-2">
@@ -204,9 +201,7 @@ export function PlanningMapView({ viewState, actions }: PlanningMapViewModel) {
                 </div>
               ))
             ) : (
-              <p className="text-muted-foreground text-sm">
-                No routes for this window yet.
-              </p>
+              <p className="text-muted-foreground text-sm">{t("noRoutes")}</p>
             )}
           </div>
         </div>
@@ -215,11 +210,11 @@ export function PlanningMapView({ viewState, actions }: PlanningMapViewModel) {
       <Dialog open={addDialogOpen} onOpenChange={actions.setAddDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Add delivery stop</DialogTitle>
+            <DialogTitle>{t("addStopTitle")}</DialogTitle>
             <DialogDescription>
               {pendingLat != null && pendingLng != null ? (
                 <>
-                  Coordinates{" "}
+                  {t("coordinates")}{" "}
                   <span className="font-mono text-xs">
                     {pendingLat.toFixed(5)}, {pendingLng.toFixed(5)}
                   </span>
@@ -228,12 +223,12 @@ export function PlanningMapView({ viewState, actions }: PlanningMapViewModel) {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Label htmlFor="recipient">Recipient name</Label>
+            <Label htmlFor="recipient">{t("recipientName")}</Label>
             <Input
               id="recipient"
               value={recipientName}
               onChange={(e) => actions.setRecipientName(e.target.value)}
-              placeholder="Recipient name"
+              placeholder={t("recipientPlaceholder")}
               autoComplete="off"
             />
           </div>
@@ -243,14 +238,14 @@ export function PlanningMapView({ viewState, actions }: PlanningMapViewModel) {
               variant="outline"
               onClick={() => actions.setAddDialogOpen(false)}
             >
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button
               type="button"
               onClick={() => actions.submitAddStop()}
               disabled={addPending}
             >
-              {addPending ? "Saving…" : "Add stop"}
+              {addPending ? tc("saving") : t("addStop")}
             </Button>
           </DialogFooter>
         </DialogContent>

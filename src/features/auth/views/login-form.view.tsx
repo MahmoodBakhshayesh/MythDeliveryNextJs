@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -16,37 +17,39 @@ import type { LoginViewModel } from "@/features/auth/controllers/login.controlle
 
 /** Presentational: reads only `viewState` + invokes `actions`. No repos / use cases. */
 export function LoginFormView({ viewState, actions, pending }: LoginViewModel) {
+  const t = useTranslations("Auth");
+
   return (
     <Card className="w-full max-w-md border shadow-lg">
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl font-semibold tracking-tight">
-          Sign in
+          {t("loginTitle")}
         </CardTitle>
         <CardDescription>
-          Connect to your Myth Delivery API ({viewState.apiBaseUrl})
+          {t("subtitleApi")} ({viewState.apiBaseUrl})
         </CardDescription>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="password" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="password">Password</TabsTrigger>
-            <TabsTrigger value="otp">Email code</TabsTrigger>
-            <TabsTrigger value="google">Google</TabsTrigger>
+            <TabsTrigger value="password">{t("tabsPassword")}</TabsTrigger>
+            <TabsTrigger value="otp">{t("tabsEmailCode")}</TabsTrigger>
+            <TabsTrigger value="google">{t("tabsGoogle")}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="password" className="mt-4 space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="username">{t("username")}</Label>
               <Input
                 id="username"
                 autoComplete="username"
                 value={viewState.username}
                 onChange={(e) => actions.setUsername(e.target.value)}
-                placeholder="admin or your username"
+                placeholder={t("usernamePlaceholder")}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t("password")}</Label>
               <Input
                 id="password"
                 type="password"
@@ -60,19 +63,19 @@ export function LoginFormView({ viewState, actions, pending }: LoginViewModel) {
               disabled={pending.password}
               onClick={() => actions.loginPassword()}
             >
-              {pending.password ? "Signing in…" : "Sign in"}
+              {pending.password ? t("signingIn") : t("signIn")}
             </Button>
           </TabsContent>
 
           <TabsContent value="otp" className="mt-4 space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t("email")}</Label>
               <Input
                 id="email"
                 type="email"
                 value={viewState.email}
                 onChange={(e) => actions.setEmail(e.target.value)}
-                placeholder="you@company.com"
+                placeholder={t("emailPlaceholder")}
               />
             </div>
             {!viewState.otpSent ? (
@@ -83,12 +86,12 @@ export function LoginFormView({ viewState, actions, pending }: LoginViewModel) {
                 disabled={pending.sendOtp || !viewState.email.trim()}
                 onClick={() => actions.sendOtp()}
               >
-                {pending.sendOtp ? "Sending…" : "Send code"}
+                {pending.sendOtp ? t("sending") : t("sendCode")}
               </Button>
             ) : (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="code">6-digit code</Label>
+                  <Label htmlFor="code">{t("otpCodeLabel")}</Label>
                   <Input
                     id="code"
                     inputMode="numeric"
@@ -102,7 +105,7 @@ export function LoginFormView({ viewState, actions, pending }: LoginViewModel) {
                   disabled={pending.verifyOtp}
                   onClick={() => actions.verifyOtp()}
                 >
-                  {pending.verifyOtp ? "Verifying…" : "Verify & sign in"}
+                  {pending.verifyOtp ? t("verifying") : t("verifySignIn")}
                 </Button>
                 <Button
                   type="button"
@@ -110,7 +113,7 @@ export function LoginFormView({ viewState, actions, pending }: LoginViewModel) {
                   className="px-0 text-sm"
                   onClick={() => actions.resetOtpFlow()}
                 >
-                  Use a different email
+                  {t("useDifferentEmail")}
                 </Button>
               </>
             )}
@@ -118,18 +121,18 @@ export function LoginFormView({ viewState, actions, pending }: LoginViewModel) {
 
           <TabsContent value="google" className="mt-4 space-y-4">
             <p className="text-muted-foreground text-sm">
-              Paste the Google ID token from your client (GIS / One Tap). Ensure{" "}
-              <code className="rounded bg-muted px-1">Google:ClientId</code> is
-              set on the API.
+              {t("googleTabHelp")}{" "}
+              <code className="rounded bg-muted px-1">{t("googleClientId")}</code>{" "}
+              {t("googleTabHelpEnd")}
             </p>
             <div className="space-y-2">
-              <Label htmlFor="idToken">ID token</Label>
+              <Label htmlFor="idToken">{t("idToken")}</Label>
               <Textarea
                 id="idToken"
                 className="min-h-[120px] font-mono text-xs"
                 value={viewState.googleToken}
                 onChange={(e) => actions.setGoogleToken(e.target.value)}
-                placeholder="eyJhbGciOiJSUzI1NiIs..."
+                placeholder={t("googleTokenPlaceholder")}
               />
             </div>
             <Button
@@ -137,7 +140,7 @@ export function LoginFormView({ viewState, actions, pending }: LoginViewModel) {
               disabled={pending.google || !viewState.googleToken.trim()}
               onClick={() => actions.loginGoogle()}
             >
-              {pending.google ? "Signing in…" : "Sign in with Google"}
+              {pending.google ? t("signingIn") : t("signInGoogle")}
             </Button>
           </TabsContent>
         </Tabs>
