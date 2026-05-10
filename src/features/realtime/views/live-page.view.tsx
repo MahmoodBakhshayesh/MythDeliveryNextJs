@@ -100,6 +100,11 @@ export function LivePageView({ viewState, actions }: LivePageViewModel) {
 
           disabled={orgsLoading || !organizations?.length}
 
+          items={(organizations ?? []).map((o) => ({
+            value: o.id,
+            label: o.name,
+          }))}
+
         >
 
           <SelectTrigger>

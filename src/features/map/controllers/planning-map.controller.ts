@@ -2,8 +2,9 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { geocodingRepository } from "@/features/geocoding/repositories/geocoding.repository";
 import { buildMapOverlay } from "@/features/map/lib/build-map-overlay";
 import { addDeliveryStopUseCase } from "@/features/map/usecases/add-delivery-stop.usecase";
 import { loadPlanningMapUseCase } from "@/features/map/usecases/load-planning-map.usecase";
@@ -14,6 +15,7 @@ import {
   POLYGON_REGION_STORAGE_KEY,
   type PolygonRegionAlgorithm,
 } from "@/features/map/domain/planning-map.types";
+import { appErrorMessage, isAppSuccess } from "@/lib/api-types";
 
 function readStoredPolygonAlgorithm(): PolygonRegionAlgorithm | null {
   if (typeof window === "undefined") return null;
@@ -45,6 +47,7 @@ export function usePlanningMapController() {
   const [pendingLat, setPendingLat] = useState<number | null>(null);
   const [pendingLng, setPendingLng] = useState<number | null>(null);
   const [recipientName, setRecipientName] = useState("New stop");
+  const [addressLine1, setAddressLine1] = useState("");
 
   const orgsQuery = useQuery({
     queryKey: queryKeys.organizations,
@@ -125,6 +128,88 @@ export function usePlanningMapController() {
     );
   }, [snapshotQuery.data, polygonRegionAlgorithm]);
 
+  const geoAutoSeq = useRef(0);
+  const pendingLatRef = useRef(pendingLat);
+  const pendingLngRef = useRef(pendingLng);
+  const mapAddrRef = useRef(addressLine1);
+  pendingLatRef.current = pendingLat;
+  pendingLngRef.current = pendingLng;
+  mapAddrRef.current = addressLine1;
+
+  useEffect(() => {
+    if (!addDialogOpen) return;
+    const plat = pendingLatRef.current;
+    const plng = pendingLngRef.current;
+    if (plat === null || plng === null) return;
+
+    const id = ++geoAutoSeq.current;
+    const timer = window.setTimeout(async () => {
+      if (geoAutoSeq.current !== id) return;
+      if (mapAddrRef.current.trim().length > 0) return;
+      const pLat = pendingLatRef.current;
+      const pLng = pendingLngRef.current;
+      if (pLat === null || pLng === null) return;
+      try {
+        const res = await geocodingRepository.reverse(pLat, pLng);
+        if (geoAutoSeq.current !== id) return;
+        if (!isAppSuccess(res) || !res.body?.displayAddress?.trim()) return;
+        if (mapAddrRef.current.trim().length > 0) return;
+        setAddressLine1(res.body.displayAddress.trim());
+      } catch {
+        /* silent */
+      }
+    }, 450);
+    return () => window.clearTimeout(timer);
+  }, [addDialogOpen, pendingLat, pendingLng, addressLine1]);
+
+  const reverseGeocodeMutation = useMutation({
+    mutationFn: async ({ lat, lng }: { lat: number; lng: number }) => {
+      const res = await geocodingRepository.reverse(lat, lng);
+      if (!isAppSuccess(res) || !res.body)
+        throw new Error(appErrorMessage(res));
+      return res.body.displayAddress?.trim() ?? "";
+    },
+    onSuccess: (addr) => {
+      if (addr) setAddressLine1(addr);
+    },
+    onError: (err: Error) =>
+      toast.error(err.message || "Could not look up address."),
+  });
+
+  const geocodeSearchMutation = useMutation({
+    mutationFn: async () => {
+      const q = addressLine1.trim();
+      if (!q) throw new Error("Enter an address or place name.");
+      const biasLat = pendingLat;
+      const biasLng = pendingLng;
+      const bias =
+        biasLat !== null &&
+        biasLng !== null &&
+        Number.isFinite(biasLat) &&
+        Number.isFinite(biasLng)
+          ? { lat: biasLat, lng: biasLng }
+          : undefined;
+      const res = await geocodingRepository.search(q, bias);
+      if (!isAppSuccess(res) || !res.body)
+        throw new Error(appErrorMessage(res));
+      const first = res.body.results?.[0];
+      if (!first)
+        throw new Error("No matching places.");
+      return first;
+    },
+    onSuccess: (first) => {
+      setPendingLat(first.latitude);
+      setPendingLng(first.longitude);
+      toast.success("Coordinates updated from Map.ir search.");
+      reverseGeocodeMutation.mutate({
+        lat: first.latitude,
+        lng: first.longitude,
+      });
+    },
+    onError: (err: Error) =>
+      toast.error(err.message || "Could not search address."),
+  });
+
   const addMutation = useMutation({
     mutationFn: addDeliveryStopUseCase,
     onSuccess: async () => {
@@ -155,6 +240,7 @@ export function usePlanningMapController() {
     setPendingLat(lat);
     setPendingLng(lng);
     setRecipientName("New stop");
+    setAddressLine1("");
     setAddDialogOpen(true);
   };
 
@@ -174,6 +260,7 @@ export function usePlanningMapController() {
       recipientName: name,
       latitude: pendingLat,
       longitude: pendingLng,
+      addressLine1: addressLine1.trim() || null,
       serviceMinutes: 10,
     });
   };
@@ -195,7 +282,10 @@ export function usePlanningMapController() {
       pendingLat,
       pendingLng,
       recipientName,
+      addressLine1,
       addPending: addMutation.isPending,
+      reverseGeocodePending: reverseGeocodeMutation.isPending,
+      geocodeSearchPending: geocodeSearchMutation.isPending,
     },
     actions: {
       setOrgId: (id: string | null) => setSelectedOrgId(id ?? ""),
@@ -205,7 +295,9 @@ export function usePlanningMapController() {
       openAddDialogAt,
       setAddDialogOpen,
       setRecipientName,
+      setAddressLine1,
       submitAddStop,
+      lookupCoordinatesFromAddress: () => geocodeSearchMutation.mutate(),
     },
   };
 }

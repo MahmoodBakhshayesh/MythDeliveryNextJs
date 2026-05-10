@@ -3,11 +3,14 @@ export const queryKeys = {
   organization: (id: string) => ["organizations", id] as const,
   profile: ["users", "me"] as const,
   vehicles: (orgId: string) => ["vehicles", orgId] as const,
+  storages: (orgId: string) => ["storages", orgId] as const,
   drivers: (orgId: string) => ["drivers", orgId] as const,
   driverVehicleAssignments: (orgId: string) =>
     ["driver-vehicle-assignments", orgId] as const,
   packages: (orgId?: string) => ["packages", orgId ?? "all"] as const,
   planningWindows: (orgId: string) => ["planning-windows", orgId] as const,
+  planningWindow: (id: string) => ["planning-window", id] as const,
+  workPlans: (orgId: string) => ["work-plans", orgId] as const,
   deliveryStops: (orgId: string, pw?: string) =>
     ["delivery-stops", orgId, pw ?? "all"] as const,
   routes: (pwId: string) => ["routes", pwId] as const,

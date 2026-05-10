@@ -34,18 +34,37 @@ export type RouteResponseDto = {
   stops: RouteStopDto[];
 };
 
+export type DispatchShiftDto = {
+  id: string;
+  ordinal: number;
+  startsAtUtc: string;
+  endsAtUtc: string;
+};
+
+export type PlanningWindowDriverShiftDto = {
+  driverId: string;
+  shiftOrdinal: number;
+};
+
 export type PlanningWindowResponseDto = {
   id: string;
   organizationId: string;
   name: string;
   startsAtUtc: string;
   endsAtUtc: string;
-  timeZoneId?: string | null;
+  timeZoneId: string;
+  workPlanId: string;
+  /** yyyy-MM-dd */
+  serviceDate: string;
+  /** Depot used as route start for drivers. */
+  storageId?: string | null;
   isConfirmed?: boolean;
   confirmedAtUtc?: string | null;
   confirmedByUserId?: string | null;
   confirmedStrategy?: string | null;
   confirmedPolygonAlgorithm?: string | null;
+  dispatchShifts?: DispatchShiftDto[];
+  driverShifts?: PlanningWindowDriverShiftDto[];
 };
 
 export type AddDeliveryStopBody = {
@@ -54,6 +73,7 @@ export type AddDeliveryStopBody = {
   recipientName: string;
   latitude: number;
   longitude: number;
+  addressLine1?: string | null;
   phone?: string | null;
   serviceMinutes?: number;
   serviceDate?: string | null;

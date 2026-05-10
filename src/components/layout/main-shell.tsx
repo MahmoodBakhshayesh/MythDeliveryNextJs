@@ -12,12 +12,13 @@ import {
   UserRound,
   LogOut,
   Menu,
-  MapPinned,
   Users,
   UserCircle,
   ClipboardList,
-  CalendarRange,
+  CalendarClock,
   Waypoints,
+  Files,
+  Warehouse,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LocaleSwitcher } from "@/components/locale-switcher";
+import { useIsAdmin } from "@/lib/use-is-admin";
 
 export type ShellNavItem = {
   href: string;
@@ -82,23 +84,30 @@ export function MainShell({ children }: { children: React.ReactNode }) {
   const username = useAuthStore((s) => s.username);
   const t = useTranslations("Nav");
   const tc = useTranslations("Common");
+  const isAdmin = useIsAdmin();
 
   const navItems = useMemo((): ShellNavItem[] => {
-    return [
+    const items: ShellNavItem[] = [
       { href: "/dashboard", label: t("dashboard"), icon: LayoutDashboard },
       { href: "/organizations", label: t("organizations"), icon: Building2 },
-      { href: "/users", label: t("users"), icon: Users },
-      { href: "/map", label: t("planningMap"), icon: MapPinned },
+    ];
+    if (isAdmin) {
+      items.push({ href: "/users", label: t("users"), icon: Users });
+    }
+    items.push(
       { href: "/plan-workflow", label: t("planWorkflow"), icon: Waypoints },
-      { href: "/planning", label: t("planning"), icon: CalendarRange },
+      { href: "/fleet-plans", label: t("fleetPlans"), icon: Files },
+      { href: "/work-plans", label: t("workPlansTemplates"), icon: CalendarClock },
       { href: "/deliveries", label: t("deliveries"), icon: ClipboardList },
       { href: "/drivers", label: t("drivers"), icon: UserCircle },
       { href: "/fleet", label: t("fleet"), icon: Truck },
+      { href: "/storages", label: t("storages"), icon: Warehouse },
       { href: "/packages", label: t("packages"), icon: Package },
       { href: "/live", label: t("live"), icon: Radio },
       { href: "/profile", label: t("profile"), icon: UserRound },
-    ];
-  }, [t]);
+    );
+    return items;
+  }, [t, isAdmin]);
 
   return (
     <div className="flex min-h-screen flex-col bg-background md:flex-row">

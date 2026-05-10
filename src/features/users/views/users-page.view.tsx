@@ -189,6 +189,10 @@ export function UsersPageView({ viewState, actions }: UsersPageViewModel) {
               <Select
                 value={roleId}
                 onValueChange={(v) => actions.setRoleId(v ?? "")}
+                items={(roles ?? []).map((r) => ({
+                  value: String(r.id),
+                  label: r.name,
+                }))}
               >
                 <SelectTrigger id="u-role">
                   <SelectValue placeholder={t("selectRole")} />

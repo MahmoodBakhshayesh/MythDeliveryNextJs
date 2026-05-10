@@ -95,6 +95,10 @@ export function DriversPageView({ viewState, actions }: DriversPageViewModel) {
           value={selectedOrgId}
           onValueChange={(v) => actions.setOrgId(v)}
           disabled={orgsLoading || !organizations?.length}
+          items={(organizations ?? []).map((o) => ({
+            value: o.id,
+            label: o.name,
+          }))}
         >
           <SelectTrigger>
             <SelectValue placeholder={tc("selectOrganization")} />
@@ -190,6 +194,10 @@ export function DriversPageView({ viewState, actions }: DriversPageViewModel) {
               value={assignmentDriverId}
               onValueChange={(v) => actions.setAssignmentDriverId(v ?? "")}
               disabled={!drivers?.length}
+              items={(drivers ?? []).map((d) => ({
+                value: d.id,
+                label: d.displayName ?? d.id,
+              }))}
             >
               <SelectTrigger>
                 <SelectValue placeholder={t("selectDriver")} />
@@ -209,6 +217,10 @@ export function DriversPageView({ viewState, actions }: DriversPageViewModel) {
               value={assignmentVehicleId}
               onValueChange={(v) => actions.setAssignmentVehicleId(v ?? "")}
               disabled={!vehicles?.length}
+              items={(vehicles ?? []).map((v) => ({
+                value: v.id,
+                label: v.name ?? v.id,
+              }))}
             >
               <SelectTrigger>
                 <SelectValue placeholder={t("selectVehicle")} />

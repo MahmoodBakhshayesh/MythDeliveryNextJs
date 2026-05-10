@@ -27,6 +27,10 @@ export function LocaleSwitcher({
         onValueChange={(next) => {
           if (next === "en" || next === "fa") setLocale(next);
         }}
+        items={LOCALES.map((loc) => ({
+          value: loc,
+          label: loc === "fa" ? t("persian") : t("english"),
+        }))}
       >
         <SelectTrigger aria-label={t("language")}>
           <SelectValue placeholder={t("language")} />

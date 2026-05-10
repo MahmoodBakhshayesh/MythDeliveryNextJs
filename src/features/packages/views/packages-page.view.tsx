@@ -54,6 +54,10 @@ export function PackagesPageView({ viewState, actions }: PackagesPageViewModel) 
           value={selectedOrgId}
           onValueChange={(v) => actions.setOrgId(v)}
           disabled={orgsLoading || !organizations?.length}
+          items={(organizations ?? []).map((o) => ({
+            value: o.id,
+            label: o.name,
+          }))}
         >
           <SelectTrigger>
             <SelectValue placeholder={tc("selectOrganization")} />

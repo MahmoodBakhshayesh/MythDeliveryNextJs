@@ -5,16 +5,23 @@ export type AddPlanningWindowBody = {
   organizationId: string;
   createdByUserId?: string | null;
   name: string;
-  startsAtUtc: string;
-  endsAtUtc: string;
-  timeZoneId?: string | null;
+  workPlanId: string;
+  /** yyyy-MM-dd */
+  serviceDate: string;
+  timeZoneId: string;
+  storageId: string;
 };
 
 export type UpdatePlanningWindowBody = {
   name: string;
-  startsAtUtc: string;
-  endsAtUtc: string;
-  timeZoneId?: string | null;
+  workPlanId: string;
+  serviceDate: string;
+  timeZoneId: string;
+  storageId?: string | null;
+};
+
+export type SetPlanningWindowDriverShiftsBody = {
+  assignments: { driverId: string; shiftOrdinal: number }[];
 };
 
 export type ConfirmPlanningWindowBody = {
@@ -30,6 +37,12 @@ export const planningWindowsRepository = {
       `/api/planningwindows?${q}`,
       { method: "GET" },
     );
+  },
+
+  getById(id: string) {
+    return apiJson<PlanningWindowResponseDto>(`/api/planningwindows/${id}`, {
+      method: "GET",
+    });
   },
 
   add(body: AddPlanningWindowBody) {
@@ -64,5 +77,15 @@ export const planningWindowsRepository = {
       method: "POST",
       body: JSON.stringify({}),
     });
+  },
+
+  setDriverShifts(id: string, body: SetPlanningWindowDriverShiftsBody) {
+    return apiJson<PlanningWindowResponseDto>(
+      `/api/planningwindows/${id}/driver-shifts`,
+      {
+        method: "PUT",
+        body: JSON.stringify(body),
+      },
+    );
   },
 };

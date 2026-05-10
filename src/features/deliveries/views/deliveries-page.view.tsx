@@ -37,6 +37,7 @@ export function DeliveriesPageView({
   const t = useTranslations("UiDeliveries");
   const tc = useTranslations("Common");
   const tm = useTranslations("UiMap");
+  const tg = useTranslations("UiGeocoding");
   const {
     organizations,
     selectedOrgId,
@@ -51,6 +52,7 @@ export function DeliveriesPageView({
     recipientName,
     latitude,
     longitude,
+    addressLine1,
     phone,
     serviceMinutes,
     serviceDate,
@@ -66,6 +68,8 @@ export function DeliveriesPageView({
     draftPending,
     exportPending,
     fleetPdfPending,
+    reverseGeocodePending,
+    geocodeSearchPending,
     driversZipPending,
     deletePlanPending,
     lastImport,
@@ -92,7 +96,7 @@ export function DeliveriesPageView({
         </div>
         <div className="flex flex-wrap gap-2">
           <Link
-            href="/planning"
+            href="/fleet-plans"
             className={cn(buttonVariants({ variant: "outline", size: "default" }))}
           >
             {t("managePlans")}
@@ -111,6 +115,10 @@ export function DeliveriesPageView({
             value={selectedOrgId}
             onValueChange={(v) => actions.setOrgId(v)}
             disabled={orgsLoading || !organizations?.length}
+            items={(organizations ?? []).map((o) => ({
+              value: o.id,
+              label: o.name,
+            }))}
           >
             <SelectTrigger>
               <SelectValue placeholder={tc("selectOrganization")} />
@@ -132,6 +140,13 @@ export function DeliveriesPageView({
               actions.setSelectedPlanId(v ?? allPlansValue)
             }
             disabled={selectorsBusy}
+            items={[
+              { value: allPlansValue, label: t("allPlans") },
+              ...(planningWindows ?? []).map((w) => ({
+                value: w.id,
+                label: w.name,
+              })),
+            ]}
           >
             <SelectTrigger>
               <SelectValue placeholder={t("planPlaceholder")} />
@@ -225,6 +240,10 @@ export function DeliveriesPageView({
               onValueChange={(v) =>
                 actions.setPlanningStrategy((v as typeof planningStrategy) ?? "SpatialCell")
               }
+              items={planningStrategies.map((s) => ({
+                value: s,
+                label: t(`planningStrategies.${s}`),
+              }))}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder={t("planningStrategy")} />
@@ -376,6 +395,47 @@ export function DeliveriesPageView({
                 />
               </div>
             </div>
+            <div className="grid gap-2">
+              <div className="flex flex-wrap items-end gap-2">
+                <div className="min-w-0 flex-1 space-y-2">
+                  <Label htmlFor="stop-address">{t("addressLine1")}</Label>
+                  <Input
+                    id="stop-address"
+                    value={addressLine1}
+                    onChange={(e) => actions.setAddressLine1(e.target.value)}
+                    placeholder={tg("addressPlaceholder")}
+                    autoComplete="street-address"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="shrink-0"
+                  disabled={
+                    geocodeSearchPending ||
+                    !addressLine1.trim()
+                  }
+                  onClick={() => actions.lookupCoordinatesFromAddress()}
+                >
+                  {geocodeSearchPending ? tg("searching") : t("findCoordinates")}
+                </Button>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={reverseGeocodePending}
+                onClick={() => actions.lookupAddressFromCoords()}
+              >
+                {reverseGeocodePending
+                  ? tg("searching")
+                  : t("lookupAddressFromCoords")}
+              </Button>
+              <p className="text-muted-foreground text-xs">
+                {tg("hintDeliveries")}
+              </p>
+            </div>
             <div className="grid gap-2 sm:grid-cols-2">
               <div className="grid gap-2">
                 <Label htmlFor="stop-service-date">Service date (optional)</Label>
@@ -391,6 +451,10 @@ export function DeliveriesPageView({
                 <Select
                   value={timeSection}
                   onValueChange={(v) => actions.setTimeSection(v ?? "")}
+                  items={timeSections.map((s) => ({
+                    value: String(s.value),
+                    label: s.label,
+                  }))}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select section" />

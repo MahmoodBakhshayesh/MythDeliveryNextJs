@@ -47,6 +47,7 @@ const PlanningMapLeaflet = dynamic(
 export function PlanningMapView({ viewState, actions }: PlanningMapViewModel) {
   const t = useTranslations("UiMap");
   const tc = useTranslations("Common");
+  const tg = useTranslations("UiGeocoding");
   const {
     organizations,
     planningWindows,
@@ -63,7 +64,10 @@ export function PlanningMapView({ viewState, actions }: PlanningMapViewModel) {
     pendingLat,
     pendingLng,
     recipientName,
+    addressLine1,
     addPending,
+    reverseGeocodePending,
+    geocodeSearchPending,
   } = viewState;
 
   const selectorsBusy = orgsLoading || planningWindowsLoading;
@@ -86,9 +90,7 @@ export function PlanningMapView({ viewState, actions }: PlanningMapViewModel) {
       </div>
 
       {selectedPlanningWindow?.isConfirmed ? (
-        <p className="text-amber-600 text-sm">
-          This planning window is confirmed and locked. Re-open it from Planning to edit routes/stops.
-        </p>
+        <p className="text-amber-600 text-sm">{t("confirmedLockedHint")}</p>
       ) : null}
 
       <div className="flex max-w-2xl flex-col gap-4 sm:flex-row">
@@ -98,6 +100,10 @@ export function PlanningMapView({ viewState, actions }: PlanningMapViewModel) {
             value={selectedOrgId}
             onValueChange={(v) => actions.setOrgId(v)}
             disabled={orgsLoading || !organizations?.length}
+            items={(organizations ?? []).map((o) => ({
+              value: o.id,
+              label: o.name,
+            }))}
           >
             <SelectTrigger>
               <SelectValue placeholder={tc("selectOrganization")} />
@@ -119,6 +125,10 @@ export function PlanningMapView({ viewState, actions }: PlanningMapViewModel) {
             disabled={
               selectorsBusy || !planningWindows?.length || !selectedOrgId
             }
+            items={(planningWindows ?? []).map((w) => ({
+              value: w.id,
+              label: w.name,
+            }))}
           >
             <SelectTrigger>
               <SelectValue placeholder={t("planningWindowPlaceholder")} />
@@ -142,6 +152,10 @@ export function PlanningMapView({ viewState, actions }: PlanningMapViewModel) {
             actions.setPolygonRegionAlgorithm(v as PolygonRegionAlgorithm)
           }
           disabled={selectorsBusy}
+          items={POLYGON_REGION_OPTIONS.map((opt) => ({
+            value: opt.value,
+            label: t(`polygon.${opt.value}.label`),
+          }))}
         >
           <SelectTrigger id="polygon-region">
             <SelectValue placeholder={t("outlineStylePlaceholder")} />
@@ -238,6 +252,36 @@ export function PlanningMapView({ viewState, actions }: PlanningMapViewModel) {
               placeholder={t("recipientPlaceholder")}
               autoComplete="off"
             />
+          </div>
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="min-w-0 flex-1 space-y-2">
+                <Label htmlFor="stop-address">{tg("addressLabel")}</Label>
+                <Input
+                  id="stop-address"
+                  value={addressLine1}
+                  onChange={(e) => actions.setAddressLine1(e.target.value)}
+                  placeholder={tg("addressPlaceholder")}
+                  autoComplete="street-address"
+                  disabled={reverseGeocodePending}
+                />
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="shrink-0"
+                disabled={
+                  geocodeSearchPending ||
+                  reverseGeocodePending ||
+                  !addressLine1.trim()
+                }
+                onClick={() => actions.lookupCoordinatesFromAddress()}
+              >
+                {geocodeSearchPending ? tg("searching") : tg("findCoordinates")}
+              </Button>
+            </div>
+            <p className="text-muted-foreground text-xs">{tg("hint")}</p>
           </div>
           <DialogFooter className="gap-2 sm:justify-end">
             <Button

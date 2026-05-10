@@ -38,7 +38,6 @@ export function FleetPageView({ viewState, actions }: FleetPageViewModel) {
     vehicles,
     orgsLoading,
     vehiclesLoading,
-    isAdmin,
     vehicleDialogOpen,
     vehicleName,
     plateNumber,
@@ -68,16 +67,14 @@ export function FleetPageView({ viewState, actions }: FleetPageViewModel) {
             </code>
           </p>
         </div>
-        {isAdmin ? (
-          <Button
-            type="button"
-            onClick={() => actions.setVehicleDialogOpen(true)}
-            disabled={!organizations?.length}
-          >
-            <Plus className="me-2 size-4" />
-            {t("addVehicle")}
-          </Button>
-        ) : null}
+        <Button
+          type="button"
+          onClick={() => actions.setVehicleDialogOpen(true)}
+          disabled={!organizations?.length}
+        >
+          <Plus className="me-2 size-4" />
+          {t("addVehicle")}
+        </Button>
       </div>
 
       <div className="max-w-md space-y-2">
@@ -86,6 +83,10 @@ export function FleetPageView({ viewState, actions }: FleetPageViewModel) {
           value={selectedOrgId}
           onValueChange={(v) => actions.setOrgId(v)}
           disabled={orgsLoading || !organizations?.length}
+          items={(organizations ?? []).map((o) => ({
+            value: o.id,
+            label: o.name,
+          }))}
         >
           <SelectTrigger>
             <SelectValue placeholder={tc("selectOrganization")} />
@@ -158,6 +159,13 @@ export function FleetPageView({ viewState, actions }: FleetPageViewModel) {
               <Select
                 value={vehicleTypePresetKey}
                 onValueChange={(v) => actions.setVehicleTypePresetKey(v ?? "")}
+                items={[
+                  ...vehicleTypePresets.map((p) => ({
+                    value: p.key,
+                    label: t(`presets.${p.key}`),
+                  })),
+                  { value: "custom", label: t("presets.custom") },
+                ]}
               >
                 <SelectTrigger>
                   <SelectValue placeholder={t("typePresetPlaceholder")} />

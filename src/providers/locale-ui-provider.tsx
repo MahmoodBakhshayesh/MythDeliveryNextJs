@@ -59,9 +59,10 @@ export function LocaleUiProvider({ children }: { children: ReactNode }) {
     document.documentElement.dir = locale === "fa" ? "rtl" : "ltr";
     if (locale === "fa") {
       document.body.style.fontFamily =
-        "var(--font-vazirmatn), var(--font-geist-sans), system-ui, sans-serif";
+        "var(--font-vazirmatn), var(--font-roboto), ui-sans-serif, system-ui, sans-serif";
     } else {
-      document.body.style.fontFamily = "";
+      document.body.style.fontFamily =
+        "var(--font-roboto), ui-sans-serif, system-ui, sans-serif";
     }
   }, [locale]);
 

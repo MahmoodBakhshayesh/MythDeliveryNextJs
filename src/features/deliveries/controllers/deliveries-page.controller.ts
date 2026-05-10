@@ -8,6 +8,8 @@ import {
   deliveryImportsRepository,
   type ImportJobResponseDto,
 } from "@/features/deliveries/repositories/delivery-imports.repository";
+import { useAutoGeocodeFill } from "@/features/geocoding/hooks/use-auto-geocode-fill";
+import { geocodingRepository } from "@/features/geocoding/repositories/geocoding.repository";
 import { listDeliveryStopsUseCase } from "@/features/deliveries/usecases/list-delivery-stops.usecase";
 import type { AddDeliveryStopBody } from "@/features/map/domain/planning-map.types";
 import { deliveryStopsRepository } from "@/features/map/repositories/delivery-stops.repository";
@@ -45,6 +47,7 @@ export function useDeliveriesPageController() {
   const [recipientName, setRecipientName] = useState("");
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
+  const [addressLine1, setAddressLine1] = useState("");
   const [phone, setPhone] = useState("");
   const [serviceMinutes, setServiceMinutes] = useState("10");
   const [serviceDate, setServiceDate] = useState("");
@@ -113,15 +116,72 @@ export function useDeliveriesPageController() {
     if (!stillValid) setSelectedPlanId(ALL_PLANS);
   }, [planningWindows, selectedPlanId]);
 
+  useAutoGeocodeFill({
+    latitude,
+    longitude,
+    addressLine1,
+    setLatitude,
+    setLongitude,
+    setAddressLine1,
+    enabled: addDialogOpen,
+  });
+
   const resetAddForm = () => {
     setRecipientName("");
     setLatitude("");
     setLongitude("");
+    setAddressLine1("");
     setPhone("");
     setServiceMinutes("10");
     setServiceDate("");
     setTimeSection("");
   };
+
+  const reverseFromCoordsMutation = useMutation({
+    mutationFn: async () => {
+      const lat = Number.parseFloat(latitude);
+      const lng = Number.parseFloat(longitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        throw new Error("Enter valid latitude and longitude.");
+      }
+      const res = await geocodingRepository.reverse(lat, lng);
+      if (!isAppSuccess(res) || !res.body)
+        throw new Error(appErrorMessage(res));
+      return res.body.displayAddress?.trim() ?? "";
+    },
+    onSuccess: (addr) => {
+      if (addr) setAddressLine1(addr);
+      toast.success(addr ? "Address filled from Map.ir." : "No address text returned.");
+    },
+    onError: (err: Error) =>
+      toast.error(err.message || "Reverse geocode failed."),
+  });
+
+  const geocodeSearchMutation = useMutation({
+    mutationFn: async () => {
+      const q = addressLine1.trim();
+      if (!q) throw new Error("Enter an address or place name.");
+      const lat = Number.parseFloat(latitude);
+      const lng = Number.parseFloat(longitude);
+      const bias =
+        Number.isFinite(lat) && Number.isFinite(lng)
+          ? { lat, lng }
+          : undefined;
+      const res = await geocodingRepository.search(q, bias);
+      if (!isAppSuccess(res) || !res.body)
+        throw new Error(appErrorMessage(res));
+      const first = res.body.results?.[0];
+      if (!first) throw new Error("No matching places.");
+      return first;
+    },
+    onSuccess: (first) => {
+      setLatitude(String(first.latitude));
+      setLongitude(String(first.longitude));
+      toast.success("Coordinates updated from Map.ir.");
+    },
+    onError: (err: Error) =>
+      toast.error(err.message || "Search failed."),
+  });
 
   const addMutation = useMutation({
     mutationFn: async () => {
@@ -146,6 +206,7 @@ export function useDeliveriesPageController() {
         latitude: lat,
         longitude: lng,
         phone: phone.trim() || null,
+        addressLine1: addressLine1.trim() || null,
         serviceMinutes: Number.isFinite(mins) ? mins : 10,
         serviceDate: serviceDate || null,
         timeSection: timeSection ? Number(timeSection) : null,
@@ -393,6 +454,7 @@ export function useDeliveriesPageController() {
       recipientName,
       latitude,
       longitude,
+      addressLine1,
       phone,
       serviceMinutes,
       serviceDate,
@@ -408,6 +470,8 @@ export function useDeliveriesPageController() {
       draftPending: draftMutation.isPending,
       exportPending: exportInstructionsMutation.isPending,
       fleetPdfPending: exportFleetPdfMutation.isPending,
+      reverseGeocodePending: reverseFromCoordsMutation.isPending,
+      geocodeSearchPending: geocodeSearchMutation.isPending,
       driversZipPending: exportDriversZipMutation.isPending,
       deletePlanPending: deletePlanMutation.isPending,
       lastImport,
@@ -420,12 +484,15 @@ export function useDeliveriesPageController() {
       setRecipientName,
       setLatitude,
       setLongitude,
+      setAddressLine1,
       setPhone,
       setServiceMinutes,
       setServiceDate,
       setTimeSection,
       setPlanningStrategy,
       submitAddStop: () => addMutation.mutate(),
+      lookupAddressFromCoords: () => reverseFromCoordsMutation.mutate(),
+      lookupCoordinatesFromAddress: () => geocodeSearchMutation.mutate(),
       deleteStop: (id: string) => {
         if (
           typeof window !== "undefined" &&

@@ -3,7 +3,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { useIsAdmin } from "@/lib/use-is-admin";
 import { addVehicleUseCase } from "@/features/fleet/usecases/add-vehicle.usecase";
 import {
   CUSTOM_VEHICLE_TYPE_KEY,
@@ -17,7 +16,6 @@ import { queryKeys } from "@/lib/query-keys";
 
 export function useFleetPageController() {
   const queryClient = useQueryClient();
-  const isAdmin = useIsAdmin();
   const [selectedOrgId, setSelectedOrgId] = useState("");
   const [vehicleDialogOpen, setVehicleDialogOpen] = useState(false);
   const [vehicleName, setVehicleName] = useState("");
@@ -131,7 +129,6 @@ export function useFleetPageController() {
       vehicles: vehiclesQuery.data ?? null,
       orgsLoading: orgsQuery.isLoading,
       vehiclesLoading: vehiclesQuery.isLoading,
-      isAdmin,
       vehicleDialogOpen,
       vehicleName,
       plateNumber,
