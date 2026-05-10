@@ -1,0 +1,14 @@
+export const queryKeys = {
+  organizations: ["organizations"] as const,
+  organization: (id: string) => ["organizations", id] as const,
+  profile: ["users", "me"] as const,
+  vehicles: (orgId: string) => ["vehicles", orgId] as const,
+  drivers: (orgId: string) => ["drivers", orgId] as const,
+  packages: (orgId?: string) => ["packages", orgId ?? "all"] as const,
+  planningWindows: (orgId: string) => ["planning-windows", orgId] as const,
+  deliveryStops: (orgId: string, pw?: string) =>
+    ["delivery-stops", orgId, pw ?? "all"] as const,
+  routes: (pwId: string) => ["routes", pwId] as const,
+  users: ["users"] as const,
+  roles: ["roles"] as const,
+};
