@@ -6,6 +6,7 @@ import type {
   RouteResponseDto,
   StopPinModel,
 } from "@/features/map/domain/planning-map.types";
+import { applyNonOverlappingHullClip } from "@/features/map/lib/clip-partition-hulls";
 import { colorForDriverId } from "@/features/map/lib/driver-color";
 import { computeRouteRegionRing } from "@/features/map/lib/polygon-region";
 
@@ -19,7 +20,7 @@ export function buildMapOverlay(
   const stopColorById = new Map<string, string>();
   const stopSequenceById = new Map<string, number>();
 
-  const routeLayers: RouteLayerModel[] = routes.map((route) => {
+  const routeLayersBuilt: RouteLayerModel[] = routes.map((route) => {
     const color = colorForDriverId(route.driverId);
     const sorted = [...route.stops].sort((a, b) => a.sequence - b.sequence);
     for (const rs of sorted) {
@@ -30,7 +31,9 @@ export function buildMapOverlay(
       s.latitude,
       s.longitude,
     ]);
-    const hull = computeRouteRegionRing(sorted, polygonAlgorithm);
+    const hullRingAlgorithm =
+      polygonAlgorithm === "partitionNoOverlap" ? "convexHull" : polygonAlgorithm;
+    const hull = computeRouteRegionRing(sorted, hullRingAlgorithm);
 
     return {
       routeId: route.id,
@@ -42,14 +45,37 @@ export function buildMapOverlay(
     };
   });
 
-  const pins: StopPinModel[] = stops.map((s) => ({
-    id: s.id,
-    recipientName: s.recipientName,
-    lat: s.latitude,
-    lng: s.longitude,
-    color: stopColorById.get(s.id) ?? UNASSIGNED_STOP_COLOR,
-    sequence: stopSequenceById.get(s.id) ?? null,
-  }));
+  const routeStopMetaByDeliveryId = new Map<
+    string,
+    { routeStopId: string; routeId: string }
+  >();
+  for (const route of routes) {
+    for (const rs of route.stops) {
+      routeStopMetaByDeliveryId.set(rs.deliveryStopId, {
+        routeStopId: rs.id,
+        routeId: route.id,
+      });
+    }
+  }
+
+  const routeLayers =
+    polygonAlgorithm === "partitionNoOverlap"
+      ? applyNonOverlappingHullClip(routeLayersBuilt)
+      : routeLayersBuilt;
+
+  const pins: StopPinModel[] = stops.map((s) => {
+    const meta = routeStopMetaByDeliveryId.get(s.id);
+    return {
+      id: s.id,
+      recipientName: s.recipientName,
+      lat: s.latitude,
+      lng: s.longitude,
+      color: stopColorById.get(s.id) ?? UNASSIGNED_STOP_COLOR,
+      sequence: stopSequenceById.get(s.id) ?? null,
+      routeStopId: meta?.routeStopId ?? null,
+      routeId: meta?.routeId ?? null,
+    };
+  });
 
   const boundsPoints: [number, number][] = stops.map((s) => [
     s.latitude,

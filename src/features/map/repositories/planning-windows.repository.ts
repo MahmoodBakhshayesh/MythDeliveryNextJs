@@ -9,7 +9,7 @@ export type AddPlanningWindowBody = {
   /** yyyy-MM-dd */
   serviceDate: string;
   timeZoneId: string;
-  storageId: string;
+  distributionCenterId: string;
 };
 
 export type UpdatePlanningWindowBody = {
@@ -17,7 +17,7 @@ export type UpdatePlanningWindowBody = {
   workPlanId: string;
   serviceDate: string;
   timeZoneId: string;
-  storageId?: string | null;
+  distributionCenterId?: string | null;
 };
 
 export type SetPlanningWindowDriverShiftsBody = {

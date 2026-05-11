@@ -10,6 +10,9 @@ export type DeliveryStopResponseDto = {
   longitude: number;
   addressLine1?: string | null;
   city?: string | null;
+  region?: string | null;
+  postalCode?: string | null;
+  country?: string | null;
   serviceDate?: string | null;
   timeSection?: number | null;
   status?: number;
@@ -17,6 +20,55 @@ export type DeliveryStopResponseDto = {
   selectedRouteId?: string | null;
   selectedRouteStopId?: string | null;
   selectedRouteSequence?: number | null;
+  notes?: string | null;
+  externalRef?: string | null;
+  weightKg?: number | null;
+  volumeM3?: number | null;
+  lengthCm?: number | null;
+  widthCm?: number | null;
+  heightCm?: number | null;
+};
+
+/** Body for PUT /api/deliverystops/{id} (matches API contract). */
+export type UpdateDeliveryStopBody = {
+  planningWindowId?: string | null;
+  recipientName: string;
+  phone?: string | null;
+  addressLine1?: string | null;
+  city?: string | null;
+  region?: string | null;
+  postalCode?: string | null;
+  country?: string | null;
+  latitude: number;
+  longitude: number;
+  weightKg?: number | null;
+  volumeM3?: number | null;
+  lengthCm?: number | null;
+  widthCm?: number | null;
+  heightCm?: number | null;
+  serviceDate?: string | null;
+  timeSection?: number | null;
+  orderId?: string | null;
+  notes?: string | null;
+  externalRef?: string | null;
+};
+
+/** Context for route/stop editing overlays on the planning map. */
+export type RouteStopEditMapContext = {
+  planningWindowId: string;
+  organizationId: string;
+  isConfirmed: boolean;
+  routes: RouteResponseDto[];
+  stops: DeliveryStopResponseDto[];
+  onAfterMutation: () => Promise<void>;
+  repositioningDeliveryStopId: string | null;
+  onRepositioningDeliveryStopChange: (id: string | null) => void;
+  onEditDeliveryStop: (deliveryStopId: string) => void;
+  onRepositionDragEnd: (deliveryStopId: string, lat: number, lng: number) => void;
+  removeVisit: (routeStopId: string) => Promise<void>;
+  deleteStop: (deliveryStopId: string) => Promise<void>;
+  /** True while update/remove/delete stop mutations run (from map controller). */
+  stopEditBusy: boolean;
 };
 
 export type RouteStopDto = {
@@ -35,6 +87,8 @@ export type RouteResponseDto = {
   vehicleId: string;
   driverName?: string | null;
   isSelected?: boolean;
+  /** RouteStatus from API (0 Draft … 4 Cancelled). */
+  status?: number;
   stops: RouteStopDto[];
 };
 
@@ -61,7 +115,7 @@ export type PlanningWindowResponseDto = {
   /** yyyy-MM-dd */
   serviceDate: string;
   /** Depot used as route start for drivers. */
-  storageId?: string | null;
+  distributionCenterId?: string | null;
   isConfirmed?: boolean;
   confirmedAtUtc?: string | null;
   confirmedByUserId?: string | null;
@@ -106,6 +160,7 @@ export type RouteLayerModel = {
 };
 
 export type StopPinModel = {
+  /** Delivery stop id (matches `DeliveryStopResponseDto.id`). */
   id: string;
   recipientName: string;
   lat: number;
@@ -113,6 +168,9 @@ export type StopPinModel = {
   color: string;
   /** Visit order on assigned route (when known). */
   sequence?: number | null;
+  /** Present when this stop is linked to a draft route visit (for route-edit APIs). */
+  routeStopId?: string | null;
+  routeId?: string | null;
 };
 
 export type MapOverlayModel = {
@@ -126,6 +184,7 @@ export type PolygonRegionAlgorithm =
   | "convexHull"
   | "concaveHull"
   | "boundingBox"
+  | "partitionNoOverlap"
   | "none";
 
 export const POLYGON_REGION_OPTIONS: ReadonlyArray<{
@@ -150,6 +209,12 @@ export const POLYGON_REGION_OPTIONS: ReadonlyArray<{
     label: "Bounding rectangle",
     description:
       "Axis-aligned box around stops—fast and easy to compare areas.",
+  },
+  {
+    value: "partitionNoOverlap",
+    label: "Partition (no overlap)",
+    description:
+      "Convex outline per route, then trim overlaps in stable route order so shaded regions do not stack.",
   },
   {
     value: "none",

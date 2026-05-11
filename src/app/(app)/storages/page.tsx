@@ -1,9 +1,13 @@
 "use client";
 
-import { useStoragesPageController } from "@/features/storages/controllers/storages-page.controller";
-import { StoragesPageView } from "@/features/storages/views/storages-page.view";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
-export default function StoragesPage() {
-  const vm = useStoragesPageController();
-  return <StoragesPageView {...vm} />;
+/** @deprecated Use `/distribution-centers`. Kept for bookmarks and Next typed routes cache. */
+export default function StoragesRedirectPage() {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace("/distribution-centers");
+  }, [router]);
+  return null;
 }

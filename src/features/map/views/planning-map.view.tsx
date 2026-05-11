@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Label } from "@/components/ui/label";
 import {
@@ -11,12 +12,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -31,7 +26,11 @@ import type { PlanningMapViewModel } from "@/features/map/controllers/planning-m
 import {
   POLYGON_REGION_OPTIONS,
   type PolygonRegionAlgorithm,
+  type RouteStopEditMapContext,
 } from "@/features/map/domain/planning-map.types";
+import { DeliveryStopEditDialog } from "@/features/map/components/delivery-stop-edit-dialog";
+import { PlanningMapSidebar } from "@/features/map/components/planning-map-sidebar";
+import { deliveryStopToUpdateBody } from "@/features/map/lib/delivery-stop-update-body";
 
 const PlanningMapLeaflet = dynamic(
   () =>
@@ -48,6 +47,15 @@ export function PlanningMapView({ viewState, actions }: PlanningMapViewModel) {
   const t = useTranslations("UiMap");
   const tc = useTranslations("Common");
   const tg = useTranslations("UiGeocoding");
+  const tre = useTranslations("UiRouteEdit");
+  const [mapSelectedDeliveryStopId, setMapSelectedDeliveryStopId] = useState<
+    string | null
+  >(null);
+  const [repositioningDeliveryStopId, setRepositioningDeliveryStopId] =
+    useState<string | null>(null);
+  const [deliveryStopEditorId, setDeliveryStopEditorId] = useState<
+    string | null
+  >(null);
   const {
     organizations,
     planningWindows,
@@ -68,7 +76,16 @@ export function PlanningMapView({ viewState, actions }: PlanningMapViewModel) {
     addPending,
     reverseGeocodePending,
     geocodeSearchPending,
+    mapRoutes,
+    mapStops,
+    stopEditBusy,
   } = viewState;
+
+  useEffect(() => {
+    setMapSelectedDeliveryStopId(null);
+    setRepositioningDeliveryStopId(null);
+    setDeliveryStopEditorId(null);
+  }, [selectedPlanningWindowId]);
 
   const selectorsBusy = orgsLoading || planningWindowsLoading;
   const regionOption = POLYGON_REGION_OPTIONS.find(
@@ -79,6 +96,39 @@ export function PlanningMapView({ viewState, actions }: PlanningMapViewModel) {
     !!selectedPlanningWindowId &&
     !!overlay &&
     !snapshotLoading;
+
+  const routeEditActive =
+    !!selectedPlanningWindowId &&
+    !!mapRoutes?.length &&
+    !selectedPlanningWindow?.isConfirmed;
+
+  const routeStopEditContext: RouteStopEditMapContext | null =
+    routeEditActive && mapRoutes && mapStops != null
+      ? {
+          planningWindowId: selectedPlanningWindowId,
+          organizationId: selectedOrgId,
+          isConfirmed: Boolean(selectedPlanningWindow?.isConfirmed),
+          routes: mapRoutes,
+          stops: mapStops,
+          onAfterMutation: actions.refreshMapSnapshot,
+          repositioningDeliveryStopId,
+          onRepositioningDeliveryStopChange: setRepositioningDeliveryStopId,
+          onEditDeliveryStop: (id) => setDeliveryStopEditorId(id),
+          onRepositionDragEnd: async (id, lat, lng) => {
+            const st = mapStops.find((x) => x.id === id);
+            if (!st) return;
+            await actions.updateDeliveryStop(
+              id,
+              deliveryStopToUpdateBody(st, { latitude: lat, longitude: lng }),
+            );
+            setRepositioningDeliveryStopId(null);
+            setMapSelectedDeliveryStopId(null);
+          },
+          removeVisit: actions.removeVisitFromRoute,
+          deleteStop: actions.deleteDeliveryStop,
+          stopEditBusy,
+        }
+      : null;
 
   return (
     <div className="space-y-6">
@@ -181,8 +231,8 @@ export function PlanningMapView({ viewState, actions }: PlanningMapViewModel) {
         </p>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_240px]">
-        <div className="relative h-[min(70vh,560px)] w-full overflow-hidden rounded-lg bg-muted">
+      <div className="grid min-w-0 gap-4 xl:grid-cols-[1fr_minmax(280px,360px)]">
+        <div className="relative h-[min(70vh,560px)] min-w-0 w-full overflow-hidden rounded-lg bg-muted">
           {snapshotLoading && (
             <Skeleton className="absolute inset-0 z-[400] rounded-lg" />
           )}
@@ -190,6 +240,13 @@ export function PlanningMapView({ viewState, actions }: PlanningMapViewModel) {
             <PlanningMapLeaflet
               overlay={overlay}
               onMapClick={actions.openAddDialogAt}
+              selectedDeliveryStopId={
+                routeEditActive ? mapSelectedDeliveryStopId : undefined
+              }
+              onDeliveryStopSelect={
+                routeEditActive ? setMapSelectedDeliveryStopId : undefined
+              }
+              routeStopEdit={routeStopEditContext}
             />
           ) : !snapshotLoading ? (
             <div className="text-muted-foreground flex size-full items-center justify-center p-6 text-center text-sm">
@@ -198,33 +255,30 @@ export function PlanningMapView({ viewState, actions }: PlanningMapViewModel) {
                 : t("emptySelectOrgWindow")}
             </div>
           ) : null}
+          {canShowMap && repositioningDeliveryStopId ? (
+            <p className="text-muted-foreground pointer-events-none absolute bottom-2 left-2 right-2 z-[410] rounded-md border bg-background/95 px-2 py-1.5 text-center text-xs shadow-sm">
+              {tre("mapDragRepositionHint")}
+            </p>
+          ) : null}
         </div>
 
-        <div className="space-y-3">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">{t("routesTitle")}</CardTitle>
-              <CardDescription>{t("routesDesc")}</CardDescription>
-            </CardHeader>
-          </Card>
-          <div className="flex flex-col gap-2">
-            {overlay?.routes.length ? (
-              overlay.routes.map((r) => (
-                <div
-                  key={r.routeId}
-                  className="flex items-center gap-2 rounded-md border bg-card px-3 py-2 text-sm"
-                >
-                  <span
-                    className="size-3 shrink-0 rounded-full ring-1 ring-black/10"
-                    style={{ backgroundColor: r.color }}
-                  />
-                  <span className="truncate font-medium">{r.driverName}</span>
-                </div>
-              ))
-            ) : (
-              <p className="text-muted-foreground text-sm">{t("noRoutes")}</p>
-            )}
-          </div>
+        <div className="min-w-0">
+          <PlanningMapSidebar
+            overlay={overlay}
+            polygonAlgorithm={polygonRegionAlgorithm}
+            mapStops={mapStops}
+            routes={mapRoutes ?? undefined}
+            canShowMap={canShowMap}
+            routeEditActive={routeEditActive}
+            isConfirmed={Boolean(selectedPlanningWindow?.isConfirmed)}
+            planningWindowId={selectedPlanningWindowId}
+            selectedDeliveryStopId={mapSelectedDeliveryStopId}
+            onClearMapSelection={() => setMapSelectedDeliveryStopId(null)}
+            repositioningDeliveryStopId={repositioningDeliveryStopId}
+            onEditStop={setDeliveryStopEditorId}
+            onStartReposition={setRepositioningDeliveryStopId}
+            onAfterMutation={actions.refreshMapSnapshot}
+          />
         </div>
       </div>
 
@@ -301,6 +355,25 @@ export function PlanningMapView({ viewState, actions }: PlanningMapViewModel) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <DeliveryStopEditDialog
+        open={deliveryStopEditorId !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeliveryStopEditorId(null);
+        }}
+        stop={
+          deliveryStopEditorId && mapStops
+            ? (mapStops.find((x) => x.id === deliveryStopEditorId) ?? null)
+            : null
+        }
+        defaultServiceDate={selectedPlanningWindow?.serviceDate ?? null}
+        saving={stopEditBusy}
+        onSave={(body) =>
+          deliveryStopEditorId
+            ? actions.updateDeliveryStop(deliveryStopEditorId, body)
+            : Promise.resolve()
+        }
+      />
     </div>
   );
 }

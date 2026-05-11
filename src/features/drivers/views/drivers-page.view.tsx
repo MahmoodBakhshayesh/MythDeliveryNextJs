@@ -1,6 +1,7 @@
 "use client";
 
 import { Pencil, Plus, Trash2 } from "lucide-react";
+import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { Label } from "@/components/ui/label";
 import {
@@ -53,6 +54,9 @@ export function DriversPageView({ viewState, actions }: DriversPageViewModel) {
     userName,
     password,
     passwordConfirm,
+    distributionCenters,
+    distributionCentersLoading,
+    addDistributionCenterId,
     savePending,
     deletePending,
     assignmentDriverId,
@@ -67,8 +71,22 @@ export function DriversPageView({ viewState, actions }: DriversPageViewModel) {
     assignmentUpdatePending,
   } = viewState;
 
-  const loading = orgsLoading || driversLoading;
+  const loading =
+    orgsLoading || driversLoading || distributionCentersLoading;
   const relationLoading = orgsLoading || vehiclesLoading || assignmentsLoading;
+
+  const driversByDepot = useMemo(() => {
+    const list = drivers ?? [];
+    const map = new Map<string, typeof list>();
+    for (const d of list) {
+      const depotLabel =
+        distributionCenters?.find((c) => c.id === d.distributionCenterId)?.name ??
+        d.distributionCenterId.slice(0, 8);
+      if (!map.has(depotLabel)) map.set(depotLabel, []);
+      map.get(depotLabel)!.push(d);
+    }
+    return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [drivers, distributionCenters]);
 
   return (
     <div className="space-y-6">
@@ -124,59 +142,73 @@ export function DriversPageView({ viewState, actions }: DriversPageViewModel) {
           <Skeleton className="h-28" />
         </div>
       ) : drivers?.length ? (
-        <div className="overflow-hidden rounded-lg border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/60">
-              <tr className="text-start">
-                <th className="px-3 py-2 font-medium">{tc("name")}</th>
-                <th className="px-3 py-2 font-medium">{tc("phone")}</th>
-                <th className="px-3 py-2 font-medium">{t("license")}</th>
-                <th className="px-3 py-2 font-medium">{tc("status")}</th>
-                <th className="px-3 py-2 font-medium w-[120px]" />
-              </tr>
-            </thead>
-            <tbody>
-              {drivers.map((d) => (
-                <tr key={d.id} className="border-t">
-                  <td className="px-3 py-2 font-medium">{d.displayName}</td>
-                  <td className="text-muted-foreground px-3 py-2">
-                    {d.phone ?? "—"}
-                  </td>
-                  <td className="text-muted-foreground px-3 py-2">
-                    {d.licenseNumber ?? "—"}
-                  </td>
-                  <td className="px-3 py-2">
-                    <Badge variant={d.isActive ? "secondary" : "outline"}>
-                      {d.isActive ? t("active") : t("inactive")}
-                    </Badge>
-                  </td>
-                  <td className="px-3 py-2">
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        aria-label={tc("edit")}
-                        onClick={() => actions.openEdit(d)}
-                      >
-                        <Pencil className="size-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        aria-label={t("delete")}
-                        disabled={deletePending}
-                        onClick={() => actions.deleteDriver(d.id)}
-                      >
-                        <Trash2 className="text-destructive size-4" />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="space-y-8">
+          {driversByDepot.map(([depotLabel, rows]) => (
+            <section key={depotLabel} className="space-y-2">
+              <h2 className="text-sm font-semibold tracking-tight text-muted-foreground">
+                {t("depotGroupTitle", { name: depotLabel })}
+              </h2>
+              <div className="overflow-hidden rounded-lg border">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/60">
+                    <tr className="text-start">
+                      <th className="px-3 py-2 font-medium">{tc("name")}</th>
+                      <th className="px-3 py-2 font-medium">{t("depot")}</th>
+                      <th className="px-3 py-2 font-medium">{tc("phone")}</th>
+                      <th className="px-3 py-2 font-medium">{t("license")}</th>
+                      <th className="px-3 py-2 font-medium">{tc("status")}</th>
+                      <th className="px-3 py-2 font-medium w-[120px]" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((d) => (
+                      <tr key={d.id} className="border-t">
+                        <td className="px-3 py-2 font-medium">{d.displayName}</td>
+                        <td className="text-muted-foreground px-3 py-2">
+                          {distributionCenters?.find((c) => c.id === d.distributionCenterId)
+                            ?.name ?? d.distributionCenterId.slice(0, 8)}
+                        </td>
+                        <td className="text-muted-foreground px-3 py-2">
+                          {d.phone ?? "—"}
+                        </td>
+                        <td className="text-muted-foreground px-3 py-2">
+                          {d.licenseNumber ?? "—"}
+                        </td>
+                        <td className="px-3 py-2">
+                          <Badge variant={d.isActive ? "secondary" : "outline"}>
+                            {d.isActive ? t("active") : t("inactive")}
+                          </Badge>
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              aria-label={tc("edit")}
+                              onClick={() => actions.openEdit(d)}
+                            >
+                              <Pencil className="size-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              aria-label={t("delete")}
+                              disabled={deletePending}
+                              onClick={() => actions.deleteDriver(d.id)}
+                            >
+                              <Trash2 className="text-destructive size-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          ))}
         </div>
       ) : (
         <Card>
@@ -425,6 +457,35 @@ export function DriversPageView({ viewState, actions }: DriversPageViewModel) {
                     value={passwordConfirm}
                     onChange={(e) => actions.setPasswordConfirm(e.target.value)}
                   />
+                </div>
+                <div className="grid gap-2">
+                  <Label>{t("depot")}</Label>
+                  <Select
+                    value={addDistributionCenterId}
+                    onValueChange={(v) =>
+                      actions.setAddDistributionCenterId(v ?? "")
+                    }
+                    disabled={
+                      distributionCentersLoading ||
+                      !(distributionCenters?.length)
+                    }
+                    items={(distributionCenters ?? []).map((s) => ({
+                      value: s.id,
+                      label: s.name,
+                    }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={t("depotPlaceholder")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(distributionCenters ?? []).map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-muted-foreground text-xs">{t("depotHelp")}</p>
                 </div>
               </>
             ) : (

@@ -2,6 +2,8 @@ import { convex } from "@turf/convex";
 import type { FeatureCollection, Point } from "geojson";
 import type { PolygonRegionAlgorithm } from "@/features/map/domain/planning-map.types";
 
+type RingAlgorithm = Exclude<PolygonRegionAlgorithm, "partitionNoOverlap">;
+
 /** Turf `convex` wraps concaveman; lower concavity follows clusters more tightly. */
 const CONCAVE_HULL_CONCAVITY = 2;
 
@@ -61,7 +63,7 @@ function boundingBoxRing(
  */
 export function computeRouteRegionRing(
   sortedStops: { latitude: number; longitude: number }[],
-  algorithm: PolygonRegionAlgorithm,
+  algorithm: RingAlgorithm,
 ): [number, number][] | null {
   switch (algorithm) {
     case "none":

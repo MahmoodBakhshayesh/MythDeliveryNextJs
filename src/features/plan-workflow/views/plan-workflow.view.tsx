@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -35,7 +36,11 @@ import type { PlanWorkflowViewModel } from "@/features/plan-workflow/controllers
 import {
   POLYGON_REGION_OPTIONS,
   type PolygonRegionAlgorithm,
+  type RouteStopEditMapContext,
 } from "@/features/map/domain/planning-map.types";
+import { DeliveryStopEditDialog } from "@/features/map/components/delivery-stop-edit-dialog";
+import { PlanningMapSidebar } from "@/features/map/components/planning-map-sidebar";
+import { deliveryStopToUpdateBody } from "@/features/map/lib/delivery-stop-update-body";
 import { cn } from "@/lib/utils";
 
 function planningMapLeafletKey(overlay: NonNullable<PlanWorkflowViewModel["viewState"]["overlay"]>) {
@@ -70,6 +75,7 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
   const tc = useTranslations("Common");
   const td = useTranslations("UiDeliveries");
   const tm = useTranslations("UiMap");
+  const tre = useTranslations("UiRouteEdit");
   const tg = useTranslations("UiGeocoding");
 
   const stepTitles = [
@@ -99,6 +105,8 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
     stops,
     stopsLoading,
     snapshot,
+    mapStops,
+    stopEditBusy,
     overlay,
     snapshotLoading,
     lastImport,
@@ -128,9 +136,9 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
     workPlans,
     workPlansLoading,
     selectedWorkPlanId,
-    storages,
-    storagesLoading,
-    selectedStorageId,
+    distributionCenters,
+    distributionCentersLoading,
+    selectedDistributionCenterId,
     driverShiftOrdinalByDriverId,
     saveDriverShiftsPending,
     orgsLoading,
@@ -151,6 +159,75 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
     driversZipPending,
     jsonExportPending,
   } = viewState;
+
+  const [mapSelectedDeliveryStopId, setMapSelectedDeliveryStopId] = useState<
+    string | null
+  >(null);
+  const [repositioningDeliveryStopId, setRepositioningDeliveryStopId] =
+    useState<string | null>(null);
+  const [deliveryStopEditorId, setDeliveryStopEditorId] = useState<
+    string | null
+  >(null);
+
+  useEffect(() => {
+    setMapSelectedDeliveryStopId(null);
+    setRepositioningDeliveryStopId(null);
+    setDeliveryStopEditorId(null);
+  }, [planId]);
+
+  const routeEditActive =
+    Boolean(planId) &&
+    Boolean(snapshot?.routes?.length) &&
+    !planDetail?.isConfirmed;
+
+  const routeStopEditContext: RouteStopEditMapContext | null =
+    routeEditActive && snapshot?.routes && mapStops != null && planId
+      ? {
+          planningWindowId: planId,
+          organizationId: selectedOrgId,
+          isConfirmed: Boolean(planDetail?.isConfirmed),
+          routes: snapshot.routes,
+          stops: mapStops,
+          onAfterMutation: actions.refreshPlanningMapSnapshot,
+          repositioningDeliveryStopId,
+          onRepositioningDeliveryStopChange: setRepositioningDeliveryStopId,
+          onEditDeliveryStop: (id) => setDeliveryStopEditorId(id),
+          onRepositionDragEnd: async (id, lat, lng) => {
+            const st = mapStops.find((x) => x.id === id);
+            if (!st) return;
+            await actions.updateDeliveryStop(
+              id,
+              deliveryStopToUpdateBody(st, { latitude: lat, longitude: lng }),
+            );
+            setRepositioningDeliveryStopId(null);
+            setMapSelectedDeliveryStopId(null);
+          },
+          removeVisit: actions.removeVisitFromRoute,
+          deleteStop: actions.deleteDeliveryStop,
+          stopEditBusy,
+        }
+      : null;
+
+  /** Step 2 supervisor driver–vehicle assignments, plus any route-only drivers for this plan. */
+  const routeEditPlanDrivers = useMemo(() => {
+    const byId = new Map<string, string>();
+    for (const a of assignments ?? []) {
+      byId.set(
+        a.driverId,
+        a.driverDisplayName?.trim() ||
+          drivers?.find((d) => d.id === a.driverId)?.displayName ||
+          "Driver",
+      );
+    }
+    for (const r of snapshot?.routes ?? []) {
+      if (r.status === 4) continue;
+      if (!byId.has(r.driverId))
+        byId.set(r.driverId, r.driverName?.trim() || "Driver");
+    }
+    return [...byId.entries()]
+      .map(([driverId, displayName]) => ({ driverId, displayName }))
+      .sort((a, b) => a.displayName.localeCompare(b.displayName));
+  }, [assignments, snapshot?.routes, drivers]);
 
   return (
     <div className="space-y-8">
@@ -288,10 +365,15 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
                 <div className="space-y-2 rounded-md border bg-muted/30 p-3">
                   <Label>{t("storagePick")}</Label>
                   <Select
-                    value={selectedStorageId}
-                    onValueChange={(v) => actions.setSelectedStorageId(v ?? "")}
-                    disabled={storagesLoading || !(storages?.length)}
-                    items={(storages ?? []).map((s) => ({
+                    value={selectedDistributionCenterId}
+                    onValueChange={(v) =>
+                      actions.setSelectedDistributionCenterId(v ?? "")
+                    }
+                    disabled={
+                      distributionCentersLoading ||
+                      !(distributionCenters?.length)
+                    }
+                    items={(distributionCenters ?? []).map((s) => ({
                       value: s.id,
                       label: s.name,
                     }))}
@@ -300,19 +382,23 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
                       <SelectValue placeholder={t("storagePlaceholder")} />
                     </SelectTrigger>
                     <SelectContent>
-                      {(storages ?? []).map((s) => (
+                      {(distributionCenters ?? []).map((s) => (
                         <SelectItem key={s.id} value={s.id}>
                           {s.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  {!storagesLoading && !(storages?.length) ? (
+                  {!distributionCentersLoading &&
+                  !(distributionCenters?.length) ? (
                     <p className="text-destructive text-xs">{t("noStorages")}</p>
                   ) : null}
                   <p className="text-muted-foreground text-xs">
                     {t("storageHelp")}{" "}
-                    <Link href="/storages" className="text-primary underline">
+                    <Link
+                      href="/distribution-centers"
+                      className="text-primary underline"
+                    >
                       {t("manageStorages")}
                     </Link>
                   </p>
@@ -326,8 +412,8 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
                     !planDate ||
                     !selectedWorkPlanId.trim() ||
                     !timeZoneId.trim() ||
-                    !selectedStorageId.trim() ||
-                    storagesLoading
+                    !selectedDistributionCenterId.trim() ||
+                    distributionCentersLoading
                   }
                 >
                   {createPlanPending ? t("creatingPlan") : t("createPlan")}
@@ -865,23 +951,58 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
               {planDetail?.isConfirmed ? (
                 <p className="text-amber-600 text-sm">{t("lockedRegenerateHint")}</p>
               ) : null}
-              <div className="relative h-[min(70vh,560px)] w-full overflow-hidden rounded-lg bg-muted">
-                {snapshotLoading && (
-                  <Skeleton className="absolute inset-0 z-[400] rounded-lg" />
-                )}
-                {overlay ? (
-                  <PlanningMapLeaflet
-                    key={planningMapLeafletKey(overlay)}
+              <div className="grid min-w-0 gap-4 xl:grid-cols-[1fr_minmax(280px,360px)]">
+                <div className="relative h-[min(70vh,560px)] min-w-0 w-full overflow-hidden rounded-lg bg-muted">
+                  {snapshotLoading && (
+                    <Skeleton className="absolute inset-0 z-[400] rounded-lg" />
+                  )}
+                  {overlay ? (
+                    <PlanningMapLeaflet
+                      key={planningMapLeafletKey(overlay)}
+                      overlay={overlay}
+                      onMapClick={() => {}}
+                      selectedDeliveryStopId={
+                        routeEditActive ? mapSelectedDeliveryStopId : undefined
+                      }
+                      onDeliveryStopSelect={
+                        routeEditActive ? setMapSelectedDeliveryStopId : undefined
+                      }
+                      routeStopEdit={routeStopEditContext}
+                    />
+                  ) : !snapshotLoading ? (
+                    <div className="text-muted-foreground flex size-full items-center justify-center p-6 text-center text-sm">
+                      {t("overviewEmpty")}
+                    </div>
+                  ) : null}
+                  {overlay && repositioningDeliveryStopId ? (
+                    <p className="text-muted-foreground pointer-events-none absolute bottom-2 left-2 right-2 z-[410] rounded-md border bg-background/95 px-2 py-1.5 text-center text-xs shadow-sm">
+                      {tre("mapDragRepositionHint")}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="min-w-0">
+                  <PlanningMapSidebar
                     overlay={overlay}
-                    onMapClick={() => {}}
+                    polygonAlgorithm={polygonAlgorithm}
+                    mapStops={mapStops}
+                    routes={snapshot?.routes ?? undefined}
+                    planDrivers={routeEditPlanDrivers}
+                    driversIncludedInRouteGeneration={selectedRouteDriverIds}
+                    canShowMap={Boolean(overlay)}
+                    routeEditActive={routeEditActive}
+                    isConfirmed={Boolean(planDetail?.isConfirmed)}
+                    planningWindowId={planId}
+                    selectedDeliveryStopId={mapSelectedDeliveryStopId}
+                    onClearMapSelection={() => setMapSelectedDeliveryStopId(null)}
+                    repositioningDeliveryStopId={repositioningDeliveryStopId}
+                    onEditStop={setDeliveryStopEditorId}
+                    onStartReposition={setRepositioningDeliveryStopId}
+                    onAfterMutation={actions.refreshPlanningMapSnapshot}
                   />
-                ) : !snapshotLoading ? (
-                  <div className="text-muted-foreground flex size-full items-center justify-center p-6 text-center text-sm">
-                    {t("overviewEmpty")}
-                  </div>
-                ) : null}
+                </div>
               </div>
               <p className="text-muted-foreground text-xs">{t("previewHelp")}</p>
+              <p className="text-muted-foreground text-xs">{t("routeEditHint")}</p>
             </div>
           ) : null}
 
@@ -952,23 +1073,58 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
                   {draftPending ? td("generatingRoutes") : td("generateDraftRoutes")}
                 </Button>
               </div>
-              <div className="relative h-[min(70vh,560px)] w-full overflow-hidden rounded-lg bg-muted">
-                {snapshotLoading && (
-                  <Skeleton className="absolute inset-0 z-[400] rounded-lg" />
-                )}
-                {overlay ? (
-                  <PlanningMapLeaflet
-                    key={planningMapLeafletKey(overlay)}
+              <div className="grid min-w-0 gap-4 xl:grid-cols-[1fr_minmax(280px,360px)]">
+                <div className="relative h-[min(70vh,560px)] min-w-0 w-full overflow-hidden rounded-lg bg-muted">
+                  {snapshotLoading && (
+                    <Skeleton className="absolute inset-0 z-[400] rounded-lg" />
+                  )}
+                  {overlay ? (
+                    <PlanningMapLeaflet
+                      key={planningMapLeafletKey(overlay)}
+                      overlay={overlay}
+                      onMapClick={() => {}}
+                      selectedDeliveryStopId={
+                        routeEditActive ? mapSelectedDeliveryStopId : undefined
+                      }
+                      onDeliveryStopSelect={
+                        routeEditActive ? setMapSelectedDeliveryStopId : undefined
+                      }
+                      routeStopEdit={routeStopEditContext}
+                    />
+                  ) : !snapshotLoading ? (
+                    <div className="text-muted-foreground flex size-full items-center justify-center p-6 text-center text-sm">
+                      {t("overviewEmpty")}
+                    </div>
+                  ) : null}
+                  {overlay && repositioningDeliveryStopId ? (
+                    <p className="text-muted-foreground pointer-events-none absolute bottom-2 left-2 right-2 z-[410] rounded-md border bg-background/95 px-2 py-1.5 text-center text-xs shadow-sm">
+                      {tre("mapDragRepositionHint")}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="min-w-0">
+                  <PlanningMapSidebar
                     overlay={overlay}
-                    onMapClick={() => {}}
+                    polygonAlgorithm={polygonAlgorithm}
+                    mapStops={mapStops}
+                    routes={snapshot?.routes ?? undefined}
+                    planDrivers={routeEditPlanDrivers}
+                    driversIncludedInRouteGeneration={selectedRouteDriverIds}
+                    canShowMap={Boolean(overlay)}
+                    routeEditActive={routeEditActive}
+                    isConfirmed={Boolean(planDetail?.isConfirmed)}
+                    planningWindowId={planId}
+                    selectedDeliveryStopId={mapSelectedDeliveryStopId}
+                    onClearMapSelection={() => setMapSelectedDeliveryStopId(null)}
+                    repositioningDeliveryStopId={repositioningDeliveryStopId}
+                    onEditStop={setDeliveryStopEditorId}
+                    onStartReposition={setRepositioningDeliveryStopId}
+                    onAfterMutation={actions.refreshPlanningMapSnapshot}
                   />
-                ) : !snapshotLoading ? (
-                  <div className="text-muted-foreground flex size-full items-center justify-center p-6 text-center text-sm">
-                    {t("overviewEmpty")}
-                  </div>
-                ) : null}
+                </div>
               </div>
               <p className="text-muted-foreground text-xs">{t("confirmMapHint")}</p>
+              <p className="text-muted-foreground text-xs">{t("routeEditHint")}</p>
               {planDetail?.isConfirmed ? (
                 <>
                   <Badge>{t("statusConfirmed")}</Badge>
@@ -1084,6 +1240,25 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
           <ChevronRight className="ms-1 size-4" />
         </Button>
       </div>
+
+      <DeliveryStopEditDialog
+        open={deliveryStopEditorId !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeliveryStopEditorId(null);
+        }}
+        stop={
+          deliveryStopEditorId && mapStops
+            ? (mapStops.find((x) => x.id === deliveryStopEditorId) ?? null)
+            : null
+        }
+        defaultServiceDate={planDetail?.serviceDate ?? null}
+        saving={stopEditBusy}
+        onSave={(body) =>
+          deliveryStopEditorId
+            ? actions.updateDeliveryStop(deliveryStopEditorId, body)
+            : Promise.resolve()
+        }
+      />
 
       <Dialog open={mapPickerOpen} onOpenChange={actions.setMapPickerOpen}>
         <DialogContent className="max-w-3xl">

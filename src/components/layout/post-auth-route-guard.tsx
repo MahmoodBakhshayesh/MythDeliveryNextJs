@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { mergeRolesFromJwt } from "@/lib/jwt-roles";
 import {
   canDriverSelfService,
@@ -23,7 +23,10 @@ export function PostAuthRouteGuard({
   const pathname = usePathname() ?? "";
   const accessToken = useAuthStore((s) => s.accessToken);
   const persistedRoles = useAuthStore((s) => s.roles);
-  const roles = mergeRolesFromJwt(persistedRoles, accessToken);
+  const roles = useMemo(
+    () => mergeRolesFromJwt(persistedRoles, accessToken),
+    [persistedRoles, accessToken],
+  );
   const driverPortal = canDriverSelfService(roles);
   const pureDriver = isDriverOnlyAccount(roles);
   const isAdmin = useIsAdmin();

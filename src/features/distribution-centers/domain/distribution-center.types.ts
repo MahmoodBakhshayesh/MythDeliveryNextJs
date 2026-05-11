@@ -1,6 +1,6 @@
 /** API-aligned types (camelCase JSON). */
 
-export type StorageDto = {
+export type DistributionCenterDto = {
   id: string;
   organizationId: string;
   name: string;

@@ -15,6 +15,7 @@ import type {
 } from "@/features/drivers/domain/driver.types";
 import { listDriverVehicleAssignmentsUseCase } from "@/features/drivers/usecases/list-driver-vehicle-assignments.usecase";
 import { listDriversUseCase } from "@/features/drivers/usecases/list-drivers.usecase";
+import { listDistributionCentersUseCase } from "@/features/distribution-centers/usecases/list-distribution-centers.usecase";
 import { listVehiclesUseCase } from "@/features/fleet/usecases/list-vehicles.usecase";
 import { listOrganizationsUseCase } from "@/features/organizations/usecases/list-organizations.usecase";
 import { queryKeys } from "@/lib/query-keys";
@@ -40,6 +41,7 @@ export function useDriversPageController() {
   const [userName, setUserName] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [addDistributionCenterId, setAddDistributionCenterId] = useState("");
   const [assignmentDriverId, setAssignmentDriverId] = useState("");
   const [assignmentVehicleId, setAssignmentVehicleId] = useState("");
   const [assignmentFromLocal, setAssignmentFromLocal] = useState("");
@@ -73,6 +75,11 @@ export function useDriversPageController() {
     enabled: !!effectiveOrgId,
     queryFn: () => listVehiclesUseCase(effectiveOrgId),
   });
+  const distributionCentersQuery = useQuery({
+    queryKey: queryKeys.distributionCenters(effectiveOrgId || "_"),
+    enabled: !!effectiveOrgId,
+    queryFn: () => listDistributionCentersUseCase(effectiveOrgId),
+  });
   const assignmentsQuery = useQuery({
     queryKey: queryKeys.driverVehicleAssignments(effectiveOrgId || "_"),
     enabled: !!effectiveOrgId,
@@ -90,6 +97,18 @@ export function useDriversPageController() {
       setAssignmentVehicleId(vehiclesQuery.data[0].id);
     }
   }, [assignmentVehicleId, vehiclesQuery.data]);
+
+  useEffect(() => {
+    setAddDistributionCenterId("");
+  }, [effectiveOrgId]);
+
+  useEffect(() => {
+    const list = distributionCentersQuery.data;
+    if (!list?.length) return;
+    setAddDistributionCenterId((prev) =>
+      prev && list.some((s) => s.id === prev) ? prev : list[0]!.id,
+    );
+  }, [distributionCentersQuery.data]);
 
   useEffect(() => {
     if (!assignmentFromLocal) {
@@ -112,6 +131,8 @@ export function useDriversPageController() {
 
   const openCreate = () => {
     resetForm();
+    const first = distributionCentersQuery.data?.[0]?.id ?? "";
+    setAddDistributionCenterId(first);
     setDialogOpen(true);
   };
 
@@ -153,8 +174,12 @@ export function useDriversPageController() {
       if (!password || password !== passwordConfirm) {
         throw new Error("Password and confirmation must match and cannot be empty.");
       }
+      if (!addDistributionCenterId.trim()) {
+        throw new Error("Select a depot (distribution center) for this driver.");
+      }
       const body: AddDriverBody = {
         organizationId: effectiveOrgId,
+        distributionCenterId: addDistributionCenterId,
         email: mail,
         userName: userName.trim() || null,
         password,
@@ -288,6 +313,9 @@ export function useDriversPageController() {
       orgsLoading: orgsQuery.isLoading,
       driversLoading: driversQuery.isLoading,
       vehiclesLoading: vehiclesQuery.isLoading,
+      distributionCenters: distributionCentersQuery.data ?? null,
+      distributionCentersLoading: distributionCentersQuery.isLoading,
+      addDistributionCenterId,
       assignmentsLoading: assignmentsQuery.isLoading,
       dialogOpen,
       editing,
@@ -327,6 +355,7 @@ export function useDriversPageController() {
       setUserName,
       setPassword,
       setPasswordConfirm,
+      setAddDistributionCenterId,
       submit: () => saveMutation.mutate(),
       deleteDriver: (id: string) => {
         if (

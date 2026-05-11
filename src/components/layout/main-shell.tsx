@@ -24,6 +24,8 @@ import {
   Car,
   History,
   Route as RouteLineIcon,
+  BookUser,
+  UserCog,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -43,26 +45,37 @@ import { LocaleSwitcher } from "@/components/locale-switcher";
 import { useIsAdmin } from "@/lib/use-is-admin";
 import { useCanDriverSelfService } from "@/lib/use-can-driver-self-service";
 import { useCanFleetOperations } from "@/lib/use-can-fleet-operations";
+import { mergeRolesFromJwt } from "@/lib/jwt-roles";
+import { canProvisionManagers } from "@/lib/roles";
 
-export type ShellNavItem = {
-  href: string;
-  label: string;
-  icon: LucideIcon;
-};
+export type NavBlock =
+  | { type: "link"; href: string; label: string; icon: LucideIcon }
+  | { type: "label"; label: string };
 
 function NavLinks({
   items,
   onNavigate,
   className,
 }: {
-  items: ShellNavItem[];
+  items: NavBlock[];
   onNavigate?: () => void;
   className?: string;
 }) {
   const pathname = usePathname();
   return (
     <nav className={cn("flex flex-col gap-1", className)}>
-      {items.map(({ href, label, icon: Icon }) => {
+      {items.map((item, idx) => {
+        if (item.type === "label") {
+          return (
+            <div
+              key={`nav-label-${idx}-${item.label}`}
+              className="px-3 pt-3 pb-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+            >
+              {item.label}
+            </div>
+          );
+        }
+        const { href, label, icon: Icon } = item;
         const active = pathname === href || pathname.startsWith(`${href}/`);
         return (
           <Link
@@ -89,91 +102,139 @@ export function MainShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { logout } = useLogoutController();
   const username = useAuthStore((s) => s.username);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const persistedRoles = useAuthStore((s) => s.roles);
   const t = useTranslations("Nav");
   const tc = useTranslations("Common");
   const isAdmin = useIsAdmin();
   const fleet = useCanFleetOperations();
   const driverPortal = useCanDriverSelfService();
   const pureDriver = driverPortal && !fleet;
-  const homeHref = pureDriver ? "/driver" : "/dashboard";
 
-  const navItems = useMemo((): ShellNavItem[] => {
+  const roles = useMemo(
+    () => mergeRolesFromJwt(persistedRoles, accessToken),
+    [persistedRoles, accessToken],
+  );
+  const canManagersNav = useMemo(() => canProvisionManagers(roles), [roles]);
+
+  const homeHref = useMemo(() => {
+    if (pureDriver) return "/driver";
+    return "/dashboard";
+  }, [pureDriver]);
+
+  const navItems = useMemo((): NavBlock[] => {
     if (pureDriver) {
       return [
-        { href: "/driver", label: t("driverHome"), icon: LayoutDashboard },
+        { type: "link", href: "/driver", label: t("driverHome"), icon: LayoutDashboard },
         {
+          type: "link",
           href: "/driver/history",
           label: t("driverPlanHistory"),
           icon: History,
         },
         {
+          type: "link",
           href: "/driver/routes",
           label: t("driverRoutes"),
           icon: RouteLineIcon,
         },
         {
+          type: "link",
           href: "/driver/packages",
           label: t("driverHandledPackages"),
           icon: Package,
         },
-        { href: "/driver/profile", label: t("driverProfile"), icon: UserRound },
-        { href: "/driver/vehicles", label: t("driverVehicles"), icon: Car },
+        { type: "link", href: "/driver/profile", label: t("driverProfile"), icon: UserRound },
+        { type: "link", href: "/driver/vehicles", label: t("driverVehicles"), icon: Car },
       ];
     }
 
-    const items: ShellNavItem[] = [
-      { href: "/dashboard", label: t("dashboard"), icon: LayoutDashboard },
-      { href: "/organizations", label: t("organizations"), icon: Building2 },
+    const blocks: NavBlock[] = [
+      { type: "link", href: "/dashboard", label: t("dashboard"), icon: LayoutDashboard },
+      { type: "link", href: "/organizations", label: t("organizations"), icon: Building2 },
     ];
+
+    blocks.push({ type: "label", label: t("peopleSection") });
     if (isAdmin) {
-      items.push({ href: "/users", label: t("users"), icon: Users });
-      items.push({
+      blocks.push({
+        type: "link",
+        href: "/team",
+        label: t("teamDirectory"),
+        icon: BookUser,
+      });
+    }
+    if (canManagersNav) {
+      blocks.push({
+        type: "link",
+        href: "/managers",
+        label: t("managers"),
+        icon: UserCog,
+      });
+    }
+    blocks.push({ type: "link", href: "/drivers", label: t("drivers"), icon: UserCircle });
+
+    if (isAdmin) {
+      blocks.push({ type: "link", href: "/users", label: t("users"), icon: Users });
+      blocks.push({
+        type: "link",
         href: "/admin",
         label: t("adminConsole"),
         icon: ShieldAlert,
       });
-      items.push({
+      blocks.push({
+        type: "link",
         href: "/admin/operations",
         label: t("adminOperations"),
         icon: Database,
       });
     }
-    items.push(
-      { href: "/plan-workflow", label: t("planWorkflow"), icon: Waypoints },
-      { href: "/fleet-plans", label: t("fleetPlans"), icon: Files },
-      { href: "/work-plans", label: t("workPlansTemplates"), icon: CalendarClock },
-      { href: "/deliveries", label: t("deliveries"), icon: ClipboardList },
-      { href: "/drivers", label: t("drivers"), icon: UserCircle },
-      { href: "/fleet", label: t("fleet"), icon: Truck },
-      { href: "/storages", label: t("storages"), icon: Warehouse },
-      { href: "/packages", label: t("packages"), icon: Package },
-      { href: "/live", label: t("live"), icon: Radio },
-      { href: "/profile", label: t("profile"), icon: UserRound },
+
+    blocks.push(
+      { type: "link", href: "/plan-workflow", label: t("planWorkflow"), icon: Waypoints },
+      { type: "link", href: "/fleet-plans", label: t("fleetPlans"), icon: Files },
+      { type: "link", href: "/work-plans", label: t("workPlansTemplates"), icon: CalendarClock },
+      { type: "link", href: "/deliveries", label: t("deliveries"), icon: ClipboardList },
+      { type: "link", href: "/fleet", label: t("fleet"), icon: Truck },
+      {
+        type: "link",
+        href: "/distribution-centers",
+        label: t("distributionCenters"),
+        icon: Warehouse,
+      },
+      { type: "link", href: "/packages", label: t("packages"), icon: Package },
+      { type: "link", href: "/live", label: t("live"), icon: Radio },
+      { type: "link", href: "/profile", label: t("profile"), icon: UserRound },
     );
+
     if (driverPortal) {
-      items.push({
+      blocks.push({
+        type: "link",
         href: "/driver/history",
         label: t("driverPlanHistory"),
         icon: History,
       });
-      items.push({
+      blocks.push({
+        type: "link",
         href: "/driver/routes",
         label: t("driverRoutes"),
         icon: RouteLineIcon,
       });
-      items.push({
+      blocks.push({
+        type: "link",
         href: "/driver/packages",
         label: t("driverHandledPackages"),
         icon: Package,
       });
-      items.push({
+      blocks.push({
+        type: "link",
         href: "/driver",
         label: t("driverWorkspace"),
         icon: Car,
       });
     }
-    return items;
-  }, [t, isAdmin, pureDriver, driverPortal]);
+
+    return blocks;
+  }, [t, isAdmin, pureDriver, driverPortal, canManagersNav]);
 
   return (
     <div className="flex min-h-screen flex-col bg-background md:flex-row">

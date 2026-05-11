@@ -2,7 +2,8 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { geocodingRepository } from "@/features/geocoding/repositories/geocoding.repository";
 import { buildMapOverlay } from "@/features/map/lib/build-map-overlay";
@@ -14,7 +15,10 @@ import { queryKeys } from "@/lib/query-keys";
 import {
   POLYGON_REGION_STORAGE_KEY,
   type PolygonRegionAlgorithm,
+  type UpdateDeliveryStopBody,
 } from "@/features/map/domain/planning-map.types";
+import { deliveryStopsRepository } from "@/features/map/repositories/delivery-stops.repository";
+import { planningRouteEditsRepository } from "@/features/map/repositories/planning-route-edits.repository";
 import { appErrorMessage, isAppSuccess } from "@/lib/api-types";
 
 function readStoredPolygonAlgorithm(): PolygonRegionAlgorithm | null {
@@ -25,6 +29,7 @@ function readStoredPolygonAlgorithm(): PolygonRegionAlgorithm | null {
       raw === "convexHull" ||
       raw === "concaveHull" ||
       raw === "boundingBox" ||
+      raw === "partitionNoOverlap" ||
       raw === "none"
     ) {
       return raw;
@@ -38,6 +43,7 @@ function readStoredPolygonAlgorithm(): PolygonRegionAlgorithm | null {
 export function usePlanningMapController() {
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
+  const tStop = useTranslations("UiRouteEdit");
   const [polygonRegionAlgorithm, setPolygonRegionAlgorithm] =
     useState<PolygonRegionAlgorithm>("convexHull");
   const [selectedOrgId, setSelectedOrgId] = useState("");
@@ -127,6 +133,22 @@ export function usePlanningMapController() {
       polygonRegionAlgorithm,
     );
   }, [snapshotQuery.data, polygonRegionAlgorithm]);
+
+  const refreshMapSnapshot = useCallback(async () => {
+    if (!effectiveOrgId || !selectedPlanningWindowId) return;
+    await queryClient.invalidateQueries({
+      queryKey: queryKeys.deliveryStops(effectiveOrgId, selectedPlanningWindowId),
+    });
+    await queryClient.invalidateQueries({
+      queryKey: queryKeys.routes(selectedPlanningWindowId),
+    });
+    await snapshotQuery.refetch();
+  }, [
+    effectiveOrgId,
+    selectedPlanningWindowId,
+    queryClient,
+    snapshotQuery,
+  ]);
 
   const geoAutoSeq = useRef(0);
   const pendingLatRef = useRef(pendingLat);
@@ -265,6 +287,55 @@ export function usePlanningMapController() {
     });
   };
 
+  const updateDeliveryStopMutation = useMutation({
+    mutationFn: async ({
+      id,
+      body,
+    }: {
+      id: string;
+      body: UpdateDeliveryStopBody;
+    }) => {
+      const res = await deliveryStopsRepository.update(id, body);
+      if (!isAppSuccess(res)) throw new Error(appErrorMessage(res));
+    },
+    onSuccess: async () => {
+      toast.success(tStop("stopSavedToast"));
+      await refreshMapSnapshot();
+    },
+    onError: (err: Error) =>
+      toast.error(err.message || tStop("stopSaveErrorToast")),
+  });
+
+  const removeVisitFromRouteMutation = useMutation({
+    mutationFn: async (routeStopId: string) => {
+      if (!selectedPlanningWindowId) throw new Error(tStop("pickVisit"));
+      const res = await planningRouteEditsRepository.removeVisitFromRoute(
+        selectedPlanningWindowId,
+        { routeStopId },
+      );
+      if (!isAppSuccess(res)) throw new Error(appErrorMessage(res));
+    },
+    onSuccess: async () => {
+      toast.success(tStop("removedFromRouteToast"));
+      await refreshMapSnapshot();
+    },
+    onError: (err: Error) =>
+      toast.error(err.message || tStop("removeFromRouteErrorToast")),
+  });
+
+  const deleteDeliveryStopMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await deliveryStopsRepository.delete(id);
+      if (!isAppSuccess(res)) throw new Error(appErrorMessage(res));
+    },
+    onSuccess: async () => {
+      toast.success(tStop("deletedStopToast"));
+      await refreshMapSnapshot();
+    },
+    onError: (err: Error) =>
+      toast.error(err.message || tStop("deleteStopErrorToast")),
+  });
+
   return {
     viewState: {
       organizations: orgs ?? null,
@@ -286,6 +357,12 @@ export function usePlanningMapController() {
       addPending: addMutation.isPending,
       reverseGeocodePending: reverseGeocodeMutation.isPending,
       geocodeSearchPending: geocodeSearchMutation.isPending,
+      mapRoutes: snapshotQuery.data?.routes ?? null,
+      mapStops: snapshotQuery.data?.stops ?? null,
+      stopEditBusy:
+        updateDeliveryStopMutation.isPending ||
+        removeVisitFromRouteMutation.isPending ||
+        deleteDeliveryStopMutation.isPending,
     },
     actions: {
       setOrgId: (id: string | null) => setSelectedOrgId(id ?? ""),
@@ -298,6 +375,13 @@ export function usePlanningMapController() {
       setAddressLine1,
       submitAddStop,
       lookupCoordinatesFromAddress: () => geocodeSearchMutation.mutate(),
+      refreshMapSnapshot,
+      updateDeliveryStop: (id: string, body: UpdateDeliveryStopBody) =>
+        updateDeliveryStopMutation.mutateAsync({ id, body }),
+      removeVisitFromRoute: (routeStopId: string) =>
+        removeVisitFromRouteMutation.mutateAsync(routeStopId),
+      deleteDeliveryStop: (id: string) =>
+        deleteDeliveryStopMutation.mutateAsync(id),
     },
   };
 }

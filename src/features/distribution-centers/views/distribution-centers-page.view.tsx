@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Label } from "@/components/ui/label";
 import {
@@ -17,7 +17,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { StoragesPageViewModel } from "@/features/storages/controllers/storages-page.controller";
+import type { DistributionCentersPageViewModel } from "@/features/distribution-centers/controllers/distribution-centers-page.controller";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -28,23 +28,28 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
-export function StoragesPageView({ viewState, actions }: StoragesPageViewModel) {
-  const t = useTranslations("UiStorages");
+export function DistributionCentersPageView({
+  viewState,
+  actions,
+}: DistributionCentersPageViewModel) {
+  const t = useTranslations("UiDistributionCenters");
   const tc = useTranslations("Common");
   const {
     organizations,
     selectedOrgId,
-    storages,
+    distributionCenters,
     orgsLoading,
-    storagesLoading,
+    distributionCentersLoading,
     dialogOpen,
-    storageName,
+    dialogMode,
+    isDcManagerOnly,
+    centerName,
     latitude,
     longitude,
-    addPending,
+    savePending,
   } = viewState;
 
-  const loading = orgsLoading || storagesLoading;
+  const loading = orgsLoading || distributionCentersLoading;
 
   return (
     <div className="space-y-6">
@@ -54,15 +59,22 @@ export function StoragesPageView({ viewState, actions }: StoragesPageViewModel) 
             {t("title")}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">{t("subtitle")}</p>
+          {isDcManagerOnly ? (
+            <p className="text-muted-foreground mt-2 max-w-xl text-xs">
+              {t("managerScopeHint")}
+            </p>
+          ) : null}
         </div>
-        <Button
-          type="button"
-          onClick={() => actions.setDialogOpen(true)}
-          disabled={!organizations?.length}
-        >
-          <Plus className="me-2 size-4" />
-          {t("addStorage")}
-        </Button>
+        {!isDcManagerOnly ? (
+          <Button
+            type="button"
+            onClick={() => actions.openAddDialog()}
+            disabled={!organizations?.length}
+          >
+            <Plus className="me-2 size-4" />
+            {t("addDistributionCenter")}
+          </Button>
+        ) : null}
       </div>
 
       <div className="max-w-md space-y-2">
@@ -96,50 +108,64 @@ export function StoragesPageView({ viewState, actions }: StoragesPageViewModel) 
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
-          {storages?.map((s) => (
+          {distributionCenters?.map((s) => (
             <Card key={s.id}>
-              <CardHeader>
-                <CardTitle className="text-base">{s.name}</CardTitle>
-                <CardDescription>
-                  {s.latitude.toFixed(5)}, {s.longitude.toFixed(5)}
-                </CardDescription>
+              <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0">
+                <div className="min-w-0">
+                  <CardTitle className="text-base">{s.name}</CardTitle>
+                  <CardDescription>
+                    {s.latitude.toFixed(5)}, {s.longitude.toFixed(5)}
+                  </CardDescription>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0"
+                  aria-label={t("editDistributionCenter")}
+                  onClick={() => actions.openEditDialog(s)}
+                >
+                  <Pencil className="size-4" />
+                </Button>
               </CardHeader>
             </Card>
           ))}
-          {!storages?.length ? (
+          {!distributionCenters?.length ? (
             <p className="text-muted-foreground text-sm">{t("empty")}</p>
           ) : null}
         </div>
       )}
 
-      <Dialog open={dialogOpen} onOpenChange={actions.setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={actions.handleDialogOpenChange}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{t("dialogTitle")}</DialogTitle>
+            <DialogTitle>
+              {dialogMode === "edit" ? t("editDialogTitle") : t("dialogTitle")}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="st-name">{tc("name")}</Label>
+              <Label htmlFor="dc-name">{tc("name")}</Label>
               <Input
-                id="st-name"
-                value={storageName}
-                onChange={(e) => actions.setStorageName(e.target.value)}
+                id="dc-name"
+                value={centerName}
+                onChange={(e) => actions.setCenterName(e.target.value)}
                 placeholder={t("namePlaceholder")}
               />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="st-lat">{t("latitude")}</Label>
+                <Label htmlFor="dc-lat">{t("latitude")}</Label>
                 <Input
-                  id="st-lat"
+                  id="dc-lat"
                   value={latitude}
                   onChange={(e) => actions.setLatitude(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="st-lng">{t("longitude")}</Label>
+                <Label htmlFor="dc-lng">{t("longitude")}</Label>
                 <Input
-                  id="st-lng"
+                  id="dc-lng"
                   value={longitude}
                   onChange={(e) => actions.setLongitude(e.target.value)}
                 />
@@ -147,11 +173,23 @@ export function StoragesPageView({ viewState, actions }: StoragesPageViewModel) 
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => actions.setDialogOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => actions.handleDialogOpenChange(false)}
+            >
               {tc("cancel")}
             </Button>
-            <Button type="button" onClick={() => actions.submitStorage()} disabled={addPending}>
-              {addPending ? tc("creating") : tc("save")}
+            <Button
+              type="button"
+              onClick={() => actions.submitDistributionCenter()}
+              disabled={savePending}
+            >
+              {savePending
+                ? dialogMode === "edit"
+                  ? tc("saving")
+                  : tc("creating")
+                : tc("save")}
             </Button>
           </DialogFooter>
         </DialogContent>

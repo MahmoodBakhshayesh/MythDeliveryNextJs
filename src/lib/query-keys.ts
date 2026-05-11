@@ -3,7 +3,10 @@ export const queryKeys = {
   organization: (id: string) => ["organizations", id] as const,
   profile: ["users", "me"] as const,
   vehicles: (orgId: string) => ["vehicles", orgId] as const,
-  storages: (orgId: string) => ["storages", orgId] as const,
+  /** Distribution centers (depots) for an organization. */
+  distributionCenters: (orgId: string) => ["distribution-centers", orgId] as const,
+  /** DC-scoped manager accounts for an organization (supervisor/admin). */
+  managers: (orgId: string) => ["managers", orgId] as const,
   drivers: (orgId: string) => ["drivers", orgId] as const,
   driverVehicleAssignments: (orgId: string) =>
     ["driver-vehicle-assignments", orgId] as const,

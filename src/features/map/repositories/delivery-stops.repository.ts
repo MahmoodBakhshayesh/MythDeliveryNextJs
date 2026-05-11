@@ -2,6 +2,7 @@ import { apiJson } from "@/lib/api-client";
 import type {
   AddDeliveryStopBody,
   DeliveryStopResponseDto,
+  UpdateDeliveryStopBody,
 } from "@/features/map/domain/planning-map.types";
 
 export const deliveryStopsRepository = {
@@ -17,6 +18,19 @@ export const deliveryStopsRepository = {
   add(body: AddDeliveryStopBody) {
     return apiJson<DeliveryStopResponseDto>("/api/deliverystops", {
       method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  get(id: string) {
+    return apiJson<DeliveryStopResponseDto>(`/api/deliverystops/${id}`, {
+      method: "GET",
+    });
+  },
+
+  update(id: string, body: UpdateDeliveryStopBody) {
+    return apiJson<DeliveryStopResponseDto>(`/api/deliverystops/${id}`, {
+      method: "PUT",
       body: JSON.stringify(body),
     });
   },

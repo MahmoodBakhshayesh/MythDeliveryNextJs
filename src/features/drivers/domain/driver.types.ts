@@ -1,6 +1,7 @@
 export type DriverResponse = {
   id: string;
   organizationId: string;
+  distributionCenterId: string;
   appUserId: string;
   displayName: string;
   phone?: string | null;
@@ -12,6 +13,7 @@ export type DriverResponse = {
 /** POST /api/drivers — creates Identity user (Driver role), org membership, and driver row. */
 export type AddDriverBody = {
   organizationId: string;
+  distributionCenterId: string;
   email: string;
   /** If omitted, API defaults to email. */
   userName?: string | null;
@@ -24,6 +26,8 @@ export type AddDriverBody = {
 };
 
 export type UpdateDriverBody = {
+  /** Supervisor may move the driver to another depot in the same organization. */
+  distributionCenterId?: string | null;
   displayName: string;
   phone?: string | null;
   licenseNumber?: string | null;

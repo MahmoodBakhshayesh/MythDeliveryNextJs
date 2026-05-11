@@ -2,7 +2,15 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+} from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import type {
   AddDeliveryStopBody,
@@ -11,9 +19,11 @@ import type {
 import {
   POLYGON_REGION_STORAGE_KEY,
   type PolygonRegionAlgorithm,
+  type UpdateDeliveryStopBody,
 } from "@/features/map/domain/planning-map.types";
 import { planningWindowsRepository } from "@/features/map/repositories/planning-windows.repository";
 import { deliveryStopsRepository } from "@/features/map/repositories/delivery-stops.repository";
+import { planningRouteEditsRepository } from "@/features/map/repositories/planning-route-edits.repository";
 import { addDeliveryStopUseCase } from "@/features/map/usecases/add-delivery-stop.usecase";
 import { loadPlanningMapUseCase } from "@/features/map/usecases/load-planning-map.usecase";
 import { buildMapOverlay } from "@/features/map/lib/build-map-overlay";
@@ -28,7 +38,7 @@ import {
 } from "@/features/deliveries/repositories/delivery-imports.repository";
 import { listDeliveryStopsUseCase } from "@/features/deliveries/usecases/list-delivery-stops.usecase";
 import { listOrganizationsUseCase } from "@/features/organizations/usecases/list-organizations.usecase";
-import { listStoragesUseCase } from "@/features/storages/usecases/list-storages.usecase";
+import { listDistributionCentersUseCase } from "@/features/distribution-centers/usecases/list-distribution-centers.usecase";
 import { routePlanningRepository } from "@/features/planning/repositories/route-planning.repository";
 import { workPlansRepository } from "@/features/work-plans/repositories/work-plans.repository";
 import { useAutoGeocodeFill } from "@/features/geocoding/hooks/use-auto-geocode-fill";
@@ -60,6 +70,7 @@ function toLocalDatetimeInput(iso: string): string {
 
 export function usePlanWorkflowController() {
   const queryClient = useQueryClient();
+  const tStop = useTranslations("UiRouteEdit");
   const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -82,7 +93,8 @@ export function usePlanWorkflowController() {
   const [selectedRouteDriverIds, setSelectedRouteDriverIds] = useState<string[]>([]);
 
   const [selectedWorkPlanId, setSelectedWorkPlanId] = useState("");
-  const [selectedStorageId, setSelectedStorageId] = useState("");
+  const [selectedDistributionCenterId, setSelectedDistributionCenterId] =
+    useState("");
   const [driverShiftOrdinalByDriverId, setDriverShiftOrdinalByDriverId] = useState<
     Record<string, string>
   >({});
@@ -175,23 +187,23 @@ export function usePlanWorkflowController() {
     },
   });
 
-  const storagesQuery = useQuery({
-    queryKey: queryKeys.storages(effectiveOrgId || "_"),
+  const distributionCentersQuery = useQuery({
+    queryKey: queryKeys.distributionCenters(effectiveOrgId || "_"),
     enabled: !!effectiveOrgId,
-    queryFn: () => listStoragesUseCase(effectiveOrgId),
+    queryFn: () => listDistributionCentersUseCase(effectiveOrgId),
   });
 
   useEffect(() => {
-    setSelectedStorageId("");
+    setSelectedDistributionCenterId("");
   }, [effectiveOrgId]);
 
   useEffect(() => {
-    const list = storagesQuery.data;
+    const list = distributionCentersQuery.data;
     if (!list?.length) return;
-    setSelectedStorageId((prev) =>
+    setSelectedDistributionCenterId((prev) =>
       prev && list.some((s) => s.id === prev) ? prev : list[0]!.id,
     );
-  }, [storagesQuery.data]);
+  }, [distributionCentersQuery.data]);
 
   const planDetailQuery = useQuery({
     queryKey: queryKeys.planningWindow(planId || "_"),
@@ -260,6 +272,17 @@ export function usePlanWorkflowController() {
     );
   }, [snapshotQuery.data, polygonAlgorithm]);
 
+  const refreshPlanningMapSnapshot = useCallback(async () => {
+    if (!planId || !effectiveOrgId) return;
+    await queryClient.invalidateQueries({
+      queryKey: queryKeys.deliveryStops(effectiveOrgId, planId),
+    });
+    await queryClient.invalidateQueries({
+      queryKey: queryKeys.routes(planId),
+    });
+    await snapshotQuery.refetch();
+  }, [planId, effectiveOrgId, queryClient, snapshotQuery]);
+
   useEffect(() => {
     if (!assignmentDriverId && driversQuery.data?.[0]?.id) {
       setAssignmentDriverId(driversQuery.data[0].id);
@@ -302,8 +325,8 @@ export function usePlanWorkflowController() {
       if (!tz) {
         throw new Error("Time zone is required for shift-based fleet plans.");
       }
-      if (!selectedStorageId.trim()) {
-        throw new Error("Select a depot / storage for route starts.");
+      if (!selectedDistributionCenterId.trim()) {
+        throw new Error("Select a distribution center (depot) for route starts.");
       }
       const name = planName.trim() || `Fleet plan ${planDate}`;
       const res = await planningWindowsRepository.add({
@@ -312,7 +335,7 @@ export function usePlanWorkflowController() {
         workPlanId: wp,
         serviceDate: planDate,
         timeZoneId: tz,
-        storageId: selectedStorageId,
+        distributionCenterId: selectedDistributionCenterId,
       });
       if (!isAppSuccess(res) || !res.body)
         throw new Error(appErrorMessage(res));
@@ -840,6 +863,54 @@ export function usePlanWorkflowController() {
 
   const goBack = () => setStep((s) => Math.max(s - 1, 0));
 
+  const updateDeliveryStopMutation = useMutation({
+    mutationFn: async ({
+      id,
+      body,
+    }: {
+      id: string;
+      body: UpdateDeliveryStopBody;
+    }) => {
+      const res = await deliveryStopsRepository.update(id, body);
+      if (!isAppSuccess(res)) throw new Error(appErrorMessage(res));
+    },
+    onSuccess: async () => {
+      toast.success(tStop("stopSavedToast"));
+      await refreshPlanningMapSnapshot();
+    },
+    onError: (err: Error) =>
+      toast.error(err.message || tStop("stopSaveErrorToast")),
+  });
+
+  const removeVisitFromRouteMutation = useMutation({
+    mutationFn: async (routeStopId: string) => {
+      if (!planId) throw new Error(tStop("pickVisit"));
+      const res = await planningRouteEditsRepository.removeVisitFromRoute(planId, {
+        routeStopId,
+      });
+      if (!isAppSuccess(res)) throw new Error(appErrorMessage(res));
+    },
+    onSuccess: async () => {
+      toast.success(tStop("removedFromRouteToast"));
+      await refreshPlanningMapSnapshot();
+    },
+    onError: (err: Error) =>
+      toast.error(err.message || tStop("removeFromRouteErrorToast")),
+  });
+
+  const deleteDeliveryStopMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await deliveryStopsRepository.delete(id);
+      if (!isAppSuccess(res)) throw new Error(appErrorMessage(res));
+    },
+    onSuccess: async () => {
+      toast.success(tStop("deletedStopToast"));
+      await refreshPlanningMapSnapshot();
+    },
+    onError: (err: Error) =>
+      toast.error(err.message || tStop("deleteStopErrorToast")),
+  });
+
   return {
     viewState: {
       step,
@@ -859,6 +930,7 @@ export function usePlanWorkflowController() {
       stops: stopsQuery.data ?? null,
       stopsLoading: stopsQuery.isLoading,
       snapshot: snapshotQuery.data ?? null,
+      mapStops: snapshotQuery.data?.stops ?? null,
       overlay,
       snapshotLoading: snapshotQuery.isLoading,
       lastImport,
@@ -904,12 +976,16 @@ export function usePlanWorkflowController() {
       planDetailLoading: planDetailQuery.isLoading,
       workPlans: workPlansQuery.data ?? null,
       workPlansLoading: workPlansQuery.isLoading,
-      storages: storagesQuery.data ?? null,
-      storagesLoading: storagesQuery.isLoading,
-      selectedStorageId,
+      distributionCenters: distributionCentersQuery.data ?? null,
+      distributionCentersLoading: distributionCentersQuery.isLoading,
+      selectedDistributionCenterId,
       selectedWorkPlanId,
       driverShiftOrdinalByDriverId,
       saveDriverShiftsPending: saveDriverShiftsMutation.isPending,
+      stopEditBusy:
+        updateDeliveryStopMutation.isPending ||
+        removeVisitFromRouteMutation.isPending ||
+        deleteDeliveryStopMutation.isPending,
     },
     actions: {
       setStep,
@@ -941,7 +1017,7 @@ export function usePlanWorkflowController() {
       selectAllRouteDrivers,
       clearRouteDrivers,
       setSelectedWorkPlanId,
-      setSelectedStorageId,
+      setSelectedDistributionCenterId,
       setDriverShiftOrdinal: (driverId: string, ordinal: string) => {
         setDriverShiftOrdinalByDriverId((prev) => ({
           ...prev,
@@ -966,6 +1042,12 @@ export function usePlanWorkflowController() {
       exportJson: () => exportJsonMutation.mutate(),
       goNext,
       goBack,
+      refreshPlanningMapSnapshot,
+      updateDeliveryStop: (id: string, body: UpdateDeliveryStopBody) =>
+        updateDeliveryStopMutation.mutateAsync({ id, body }),
+      removeVisitFromRoute: (routeStopId: string) =>
+        removeVisitFromRouteMutation.mutateAsync(routeStopId),
+      deleteDeliveryStop: (id: string) => deleteDeliveryStopMutation.mutateAsync(id),
     },
   };
 }

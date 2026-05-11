@@ -59,7 +59,7 @@ export type DriverPortalRouteDto = {
   isSelected?: boolean;
   plannedStartUtc?: string | null;
   plannedEndUtc?: string | null;
-  startStorageName?: string | null;
+  startDistributionCenterName?: string | null;
   stops: {
     id: string;
     deliveryStopId: string;
