@@ -22,6 +22,7 @@ import {
   ShieldAlert,
   Database,
   Car,
+  History,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -99,6 +100,11 @@ export function MainShell({ children }: { children: React.ReactNode }) {
     if (pureDriver) {
       return [
         { href: "/driver", label: t("driverHome"), icon: LayoutDashboard },
+        {
+          href: "/driver/history",
+          label: t("driverPlanHistory"),
+          icon: History,
+        },
         { href: "/driver/profile", label: t("driverProfile"), icon: UserRound },
         { href: "/driver/vehicles", label: t("driverVehicles"), icon: Car },
       ];
@@ -134,6 +140,11 @@ export function MainShell({ children }: { children: React.ReactNode }) {
       { href: "/profile", label: t("profile"), icon: UserRound },
     );
     if (driverPortal) {
+      items.push({
+        href: "/driver/history",
+        label: t("driverPlanHistory"),
+        icon: History,
+      });
       items.push({
         href: "/driver",
         label: t("driverWorkspace"),

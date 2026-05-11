@@ -46,6 +46,29 @@ export type UpdatePersonalVehicleBody = {
   isActive: boolean;
 };
 
+/** Route row from GET /api/driver-portal/routes — mirrors RouteResponse (camelCase JSON). */
+export type DriverPortalRouteDto = {
+  id: string;
+  planningWindowId: string;
+  driverId: string;
+  vehicleId: string;
+  driverName?: string | null;
+  vehicleName?: string | null;
+  name?: string | null;
+  status: number;
+  plannedStartUtc?: string | null;
+  plannedEndUtc?: string | null;
+  startStorageName?: string | null;
+  stops: {
+    id: string;
+    deliveryStopId: string;
+    sequence: number;
+    recipientName?: string | null;
+    latitude: number;
+    longitude: number;
+  }[];
+};
+
 export type PersonalVehicleDto = {
   id: string;
   organizationId: string;

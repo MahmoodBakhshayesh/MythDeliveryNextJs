@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { Car, UserRound } from "lucide-react";
+import { Car, History, UserRound } from "lucide-react";
 import {
   Card,
   CardDescription,
@@ -24,7 +24,18 @@ export default function DriverHomePage() {
         </p>
       </header>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Link href="/driver/history">
+          <Card className="h-full transition-colors hover:bg-muted/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <History className="size-5" />
+                {t("homeCardHistoryTitle")}
+              </CardTitle>
+              <CardDescription>{t("homeCardHistoryDesc")}</CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
         <Link href="/driver/profile">
           <Card className="h-full transition-colors hover:bg-muted/50">
             <CardHeader>
