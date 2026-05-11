@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import {
   listMyHandledPackagesForWindowUseCase,
   listMyPlanningWindowsUseCase,
-  listMyRoutesForWindowUseCase,
+  listMyRoutesUseCase,
 } from "@/features/driver-portal/usecases/driver-portal-history.usecase";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -21,8 +21,7 @@ export function useDriverPortalHistoryController() {
 
   const routesQuery = useQuery({
     queryKey: queryKeys.driverPortalRoutes(expandedPlanningWindowId ?? "_"),
-    queryFn: () =>
-      listMyRoutesForWindowUseCase(expandedPlanningWindowId ?? ""),
+    queryFn: () => listMyRoutesUseCase(expandedPlanningWindowId ?? ""),
     enabled: !!expandedPlanningWindowId,
   });
 

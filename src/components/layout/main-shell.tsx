@@ -23,6 +23,7 @@ import {
   Database,
   Car,
   History,
+  Route as RouteLineIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -105,6 +106,16 @@ export function MainShell({ children }: { children: React.ReactNode }) {
           label: t("driverPlanHistory"),
           icon: History,
         },
+        {
+          href: "/driver/routes",
+          label: t("driverRoutes"),
+          icon: RouteLineIcon,
+        },
+        {
+          href: "/driver/packages",
+          label: t("driverHandledPackages"),
+          icon: Package,
+        },
         { href: "/driver/profile", label: t("driverProfile"), icon: UserRound },
         { href: "/driver/vehicles", label: t("driverVehicles"), icon: Car },
       ];
@@ -144,6 +155,16 @@ export function MainShell({ children }: { children: React.ReactNode }) {
         href: "/driver/history",
         label: t("driverPlanHistory"),
         icon: History,
+      });
+      items.push({
+        href: "/driver/routes",
+        label: t("driverRoutes"),
+        icon: RouteLineIcon,
+      });
+      items.push({
+        href: "/driver/packages",
+        label: t("driverHandledPackages"),
+        icon: Package,
       });
       items.push({
         href: "/driver",

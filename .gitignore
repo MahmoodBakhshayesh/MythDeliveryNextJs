@@ -13,16 +13,18 @@
 # testing
 /coverage
 
-# next.js
+# next.js & bundlers
 /.next/
 /out/
-
-# production
 /build
+dist/
+.turbo/
+.parcel-cache/
 
 # misc
 .DS_Store
 *.pem
+Thumbs.db
 
 # debug
 npm-debug.log*
@@ -30,12 +32,21 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env — ignore secrets; allow committed templates
 .env*
+!.env.example
+!.env.local.example
 
 # vercel
 .vercel
 
-# typescript
+# typescript / tooling
 *.tsbuildinfo
 next-env.d.ts
+
+# JetBrains
+.idea/
+
+# OS / editors
+*.swp
+*~

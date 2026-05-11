@@ -19,12 +19,12 @@ export const driverPortalRepository = {
     });
   },
 
-  listMyRoutes(planningWindowId: string) {
-    const q = new URLSearchParams({ planningWindowId });
-    return apiJson<DriverPortalRouteDto[]>(
-      `/api/driver-portal/routes?${q.toString()}`,
-      { method: "GET" },
-    );
+  listMyRoutes(planningWindowId?: string) {
+    const path =
+      planningWindowId != null && planningWindowId !== ""
+        ? `/api/driver-portal/routes?planningWindowId=${encodeURIComponent(planningWindowId)}`
+        : "/api/driver-portal/routes";
+    return apiJson<DriverPortalRouteDto[]>(path, { method: "GET" });
   },
 
   listMyHandledPackages(planningWindowId?: string) {

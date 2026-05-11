@@ -13,6 +13,10 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { DriverPortalHistoryViewModel } from "@/features/driver-portal/controllers/driver-portal-history.controller";
+import {
+  formatDriverPortalPackageStatus,
+  formatDriverPortalRouteStatus,
+} from "@/features/driver-portal/lib/portal-status-labels";
 import { cn } from "@/lib/utils";
 
 function formatRange(startsAtUtc: string, endsAtUtc: string, timeZoneId?: string) {
@@ -36,44 +40,11 @@ export function DriverPortalHistoryView({
 }: DriverPortalHistoryViewModel) {
   const t = useTranslations("UiDriverPortal");
 
-  const routeStatusLabel = (status: number) => {
-    switch (status) {
-      case 0:
-        return t("historyRouteDraft");
-      case 1:
-        return t("historyRoutePlanned");
-      case 2:
-        return t("historyRouteActive");
-      case 3:
-        return t("historyRouteCompleted");
-      case 4:
-        return t("historyRouteCancelled");
-      default:
-        return t("historyRouteUnknown", { code: status });
-    }
-  };
+  const routeStatusLabel = (status: number) =>
+    formatDriverPortalRouteStatus(status, t);
 
-  const packageStatusLabel = (status: number | string) => {
-    const n = typeof status === "string" ? Number.parseInt(status, 10) : status;
-    if (Number.isNaN(n)) return String(status);
-    const keys = [
-      "pkgStatus0",
-      "pkgStatus1",
-      "pkgStatus2",
-      "pkgStatus3",
-      "pkgStatus4",
-      "pkgStatus5",
-      "pkgStatus6",
-      "pkgStatus7",
-      "pkgStatus8",
-      "pkgStatus9",
-      "pkgStatus10",
-      "pkgStatus11",
-      "pkgStatus12",
-    ] as const;
-    if (n >= 0 && n < keys.length) return t(keys[n]);
-    return t("pkgStatusFallback", { code: n });
-  };
+  const packageStatusLabel = (status: number | string) =>
+    formatDriverPortalPackageStatus(status, t);
 
   const formatHandledAt = (iso: string) => {
     try {

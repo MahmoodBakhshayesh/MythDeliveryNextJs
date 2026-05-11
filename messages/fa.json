@@ -47,7 +47,9 @@
     "driverProfile": "پروفایل راننده",
     "driverVehicles": "خودروهای من",
     "driverWorkspace": "فضای کار راننده",
-    "driverPlanHistory": "تاریخچه برنامه ناوگان"
+    "driverPlanHistory": "تاریخچه برنامه ناوگان",
+    "driverRoutes": "مسیرهای من",
+    "driverHandledPackages": "مرسوله‌های رسیدگی‌شده"
   },
   "Auth": {
     "welcomeBack": "خوش برگشتی",
@@ -374,7 +376,27 @@
     "pkgStatus11": "بازگشت به فرستنده",
     "pkgStatus12": "استثنا",
     "homeCardHistoryDesc": "برنامه‌های گذشته، مسیرهای تخصیص‌یافته و مرسوله‌های اسکن یا تحویل‌شده.",
-    "homeCardHistoryTitle": "تاریخچه برنامه ناوگان"
+    "homeCardHistoryTitle": "تاریخچه برنامه ناوگان",
+    "homeCardRoutesTitle": "مسیرهای من",
+    "homeCardRoutesDesc": "همه مسیرهای تخصیص‌یافته؛ می‌توانید بر اساس برنامه ناوگان فیلتر کنید.",
+    "homeCardPackagesTitle": "مرسوله‌های رسیدگی‌شده",
+    "homeCardPackagesDesc": "آخرین مرسوله‌هایی که به‌عنوان رسیدگی‌کننده ثبت شده‌اید (جدیدترین اول).",
+    "homeFleetBannerTitle": "پیش‌نویس یا برنامه سازمانی را مدیریت می‌کنید؟",
+    "homeFleetBannerDesc": "ادامه پیش‌نویس، تأیید برنامه و گزارش‌ها از بخش ناوگان است — نه فقط این فهرست راننده.",
+    "homeFleetBannerLink": "باز کردن برنامه‌های ناوگان و گزارش",
+    "routesPageTitle": "مسیرهای من",
+    "routesPageSubtitle": "مسیرهای تخصیص‌یافته در پورتال راننده. فیلتر بر اساس برنامه یا همه.",
+    "routesFilterLabel": "برنامه ناوگان",
+    "routesFilterPlaceholder": "انتخاب برنامه",
+    "routesFilterAll": "همه برنامه‌ها",
+    "routesColVehicle": "خودرو",
+    "routesColStops": "توقف‌ها",
+    "routesLoadError": "بارگذاری مسیرها ممکن نشد.",
+    "routesEmpty": "مسیری با این فیلتر نیست.",
+    "packagesPageTitle": "مرسوله‌های رسیدگی‌شده",
+    "packagesPageSubtitle": "مرسوله‌هایی که آخرین رسیدگی با شما ثبت شده (جدیدترین اول، تا سقف سرور).",
+    "packagesLoadError": "بارگذاری مرسوله‌ها ممکن نشد.",
+    "packagesEmpty": "هنوز مرسوله‌ای ثبت نشده."
   },
   "UiPlanWorkflow": {
     "title": "ویزارد برنامه ناوگان",

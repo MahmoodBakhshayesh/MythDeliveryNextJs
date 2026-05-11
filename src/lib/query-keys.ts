@@ -24,4 +24,7 @@ export const queryKeys = {
     ["driver-portal", "routes", planningWindowId] as const,
   driverPortalHandledPackages: (planningWindowId: string) =>
     ["driver-portal", "handled-packages", planningWindowId] as const,
+  driverPortalRoutesAll: (planningWindowFilter: string) =>
+    ["driver-portal", "routes-all", planningWindowFilter] as const,
+  driverPortalAllHandledPackages: ["driver-portal", "all-handled-packages"] as const,
 };

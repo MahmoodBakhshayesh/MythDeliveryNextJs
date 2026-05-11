@@ -12,18 +12,32 @@ export async function listMyPlanningWindowsUseCase(): Promise<
   return res.body;
 }
 
-export async function listMyRoutesForWindowUseCase(
-  planningWindowId: string,
+export async function listMyRoutesUseCase(
+  planningWindowId?: string,
 ): Promise<DriverPortalRouteDto[]> {
   const res = await driverPortalRepository.listMyRoutes(planningWindowId);
   if (!isAppSuccess(res) || !res.body) throw new Error(appErrorMessage(res));
   return res.body;
 }
 
+export async function listMyRoutesForWindowUseCase(
+  planningWindowId: string,
+): Promise<DriverPortalRouteDto[]> {
+  return listMyRoutesUseCase(planningWindowId);
+}
+
 export async function listMyHandledPackagesForWindowUseCase(
   planningWindowId: string,
 ): Promise<DeliveryPackageResponse[]> {
   const res = await driverPortalRepository.listMyHandledPackages(planningWindowId);
+  if (!isAppSuccess(res) || !res.body) throw new Error(appErrorMessage(res));
+  return res.body;
+}
+
+export async function listAllMyHandledPackagesUseCase(): Promise<
+  DeliveryPackageResponse[]
+> {
+  const res = await driverPortalRepository.listMyHandledPackages();
   if (!isAppSuccess(res) || !res.body) throw new Error(appErrorMessage(res));
   return res.body;
 }

@@ -47,7 +47,9 @@
     "driverProfile": "My driver profile",
     "driverVehicles": "My vehicles",
     "driverWorkspace": "Driver workspace",
-    "driverPlanHistory": "Fleet plan history"
+    "driverPlanHistory": "Fleet plan history",
+    "driverRoutes": "My routes",
+    "driverHandledPackages": "Handled packages"
   },
   "Auth": {
     "welcomeBack": "Welcome back",
@@ -374,7 +376,27 @@
     "pkgStatus11": "Returned to sender",
     "pkgStatus12": "Exception",
     "homeCardHistoryDesc": "See past fleet plans, your assigned routes, and packages you scanned or delivered.",
-    "homeCardHistoryTitle": "Fleet plan history"
+    "homeCardHistoryTitle": "Fleet plan history",
+    "homeCardRoutesTitle": "My routes",
+    "homeCardRoutesDesc": "All routes assigned to you; optionally filter by fleet plan.",
+    "homeCardPackagesTitle": "Handled packages",
+    "homeCardPackagesDesc": "Recent package history you handled (scan / delivery), newest first.",
+    "homeFleetBannerTitle": "Managing drafts or organization-wide fleet plans?",
+    "homeFleetBannerDesc": "Continue drafts, confirm plans, and download reports from the fleet area — not only this driver list.",
+    "homeFleetBannerLink": "Open fleet plans & reports",
+    "routesPageTitle": "My routes",
+    "routesPageSubtitle": "Routes assigned to you in driver portal. Filter by fleet plan or view all.",
+    "routesFilterLabel": "Fleet plan",
+    "routesFilterPlaceholder": "Choose plan",
+    "routesFilterAll": "All fleet plans",
+    "routesColVehicle": "Vehicle",
+    "routesColStops": "Stops",
+    "routesLoadError": "Could not load routes.",
+    "routesEmpty": "No routes match this filter.",
+    "packagesPageTitle": "Handled packages",
+    "packagesPageSubtitle": "Packages where you were recorded as last handler (newest first, up to server limit).",
+    "packagesLoadError": "Could not load packages.",
+    "packagesEmpty": "No handled packages yet."
   },
   "UiPlanWorkflow": {
     "title": "Fleet plan wizard",
