@@ -24,6 +24,13 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { PlanWorkflowViewModel } from "@/features/plan-workflow/controllers/plan-workflow.controller";
 import {
   POLYGON_REGION_OPTIONS,
@@ -49,6 +56,13 @@ const PlanningMapLeaflet = dynamic(
       (m) => m.PlanningMapLeaflet,
     ),
   { ssr: false, loading: () => <Skeleton className="min-h-[420px] w-full rounded-lg" /> },
+);
+const LocationPickerLeaflet = dynamic(
+  () =>
+    import("@/features/map/components/location-picker-leaflet").then(
+      (m) => m.LocationPickerLeaflet,
+    ),
+  { ssr: false },
 );
 
 export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) {
@@ -93,9 +107,17 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
     latitude,
     longitude,
     addressLine1,
+    city,
+    region,
+    postalCode,
+    country,
     phone,
-    serviceMinutes,
+    mapPickerOpen,
+    pickedPoint,
     timeSection,
+    itemSku,
+    itemDescription,
+    itemQuantity,
     timeSections,
     assignmentDriverId,
     assignmentVehicleId,
@@ -120,6 +142,7 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
     addStopPending,
     reverseGeocodePending,
     geocodeSearchPending,
+    applyPickedPointPending,
     importPending,
     draftPending,
     confirmPending,
@@ -644,9 +667,45 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
                       ? tg("searching")
                       : td("lookupAddressFromCoords")}
                   </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => actions.setMapPickerOpen(true)}
+                  >
+                    Select address from map
+                  </Button>
                   <p className="text-muted-foreground text-xs">
                     {tg("hintDeliveries")}
                   </p>
+                </div>
+                <div className="space-y-2">
+                  <Label>City</Label>
+                  <Input
+                    value={city}
+                    onChange={(e) => actions.setCity(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Region/State</Label>
+                  <Input
+                    value={region}
+                    onChange={(e) => actions.setRegion(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Postal code</Label>
+                  <Input
+                    value={postalCode}
+                    onChange={(e) => actions.setPostalCode(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Country</Label>
+                  <Input
+                    value={country}
+                    onChange={(e) => actions.setCountry(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>{tc("phone")}</Label>
@@ -656,11 +715,25 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>{td("serviceMinutes")}</Label>
+                  <Label>Item quantity *</Label>
                   <Input
-                    inputMode="numeric"
-                    value={serviceMinutes}
-                    onChange={(e) => actions.setServiceMinutes(e.target.value)}
+                    inputMode="decimal"
+                    value={itemQuantity}
+                    onChange={(e) => actions.setItemQuantity(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Item SKU</Label>
+                  <Input
+                    value={itemSku}
+                    onChange={(e) => actions.setItemSku(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Item description</Label>
+                  <Input
+                    value={itemDescription}
+                    onChange={(e) => actions.setItemDescription(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2 md:col-span-2">
@@ -1011,6 +1084,37 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
           <ChevronRight className="ms-1 size-4" />
         </Button>
       </div>
+
+      <Dialog open={mapPickerOpen} onOpenChange={actions.setMapPickerOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Select location on map</DialogTitle>
+          </DialogHeader>
+          <LocationPickerLeaflet
+            picked={pickedPoint}
+            onPick={(lat, lng) => actions.setPickedPoint({ lat, lng })}
+          />
+          <p className="text-muted-foreground text-xs">
+            Click map to place marker. We will fill latitude/longitude and best-effort address fields.
+          </p>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => actions.setMapPickerOpen(false)}
+            >
+              {tc("cancel")}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => actions.applyPickedPoint()}
+              disabled={applyPickedPointPending || !pickedPoint}
+            >
+              {applyPickedPointPending ? "Applying..." : "Use selected point"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

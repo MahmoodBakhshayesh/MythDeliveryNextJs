@@ -43,18 +43,33 @@ export function useDeliveriesPageController() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedOrgId, setSelectedOrgId] = useState("");
   const [selectedPlanId, setSelectedPlanId] = useState(ALL_PLANS);
+  const [selectedOrderFilter, setSelectedOrderFilter] = useState<string | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [mapPickerOpen, setMapPickerOpen] = useState(false);
+  const [pickedPoint, setPickedPoint] = useState<{ lat: number; lng: number } | null>(null);
   const [recipientName, setRecipientName] = useState("");
+  const [orderId, setOrderId] = useState("");
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
   const [addressLine1, setAddressLine1] = useState("");
+  const [city, setCity] = useState("");
+  const [region, setRegion] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+  const [country, setCountry] = useState("");
   const [phone, setPhone] = useState("");
-  const [serviceMinutes, setServiceMinutes] = useState("10");
-  const [serviceDate, setServiceDate] = useState("");
   const [timeSection, setTimeSection] = useState<string>("");
+  const [notes, setNotes] = useState("");
+  const [externalRef, setExternalRef] = useState("");
+  const [itemSku, setItemSku] = useState("");
+  const [itemDescription, setItemDescription] = useState("");
+  const [itemQuantity, setItemQuantity] = useState("1");
+  const [itemWeightKg, setItemWeightKg] = useState("");
+  const [itemVolumeM3, setItemVolumeM3] = useState("");
   const [planningStrategy, setPlanningStrategy] = useState<
     (typeof PLANNING_STRATEGIES)[number]
   >("SpatialCell");
+  const [replaceExistingOrderIdsOnImport, setReplaceExistingOrderIdsOnImport] =
+    useState(false);
   const [lastImport, setLastImport] = useState<ImportJobResponseDto | null>(
     null,
   );
@@ -109,6 +124,10 @@ export function useDeliveriesPageController() {
       listDeliveryStopsUseCase(effectiveOrgId, planFilterForList),
   });
 
+  const filteredStops = (stopsQuery.data ?? []).filter((s) =>
+    selectedOrderFilter ? (s.orderId ?? "") === selectedOrderFilter : true,
+  );
+
   useEffect(() => {
     if (!planningWindows?.length) return;
     if (selectedPlanId === ALL_PLANS) return;
@@ -128,13 +147,64 @@ export function useDeliveriesPageController() {
 
   const resetAddForm = () => {
     setRecipientName("");
+    setOrderId("");
     setLatitude("");
     setLongitude("");
     setAddressLine1("");
+    setCity("");
+    setRegion("");
+    setPostalCode("");
+    setCountry("");
     setPhone("");
-    setServiceMinutes("10");
-    setServiceDate("");
     setTimeSection("");
+    setNotes("");
+    setExternalRef("");
+    setItemSku("");
+    setItemDescription("");
+    setItemQuantity("1");
+    setItemWeightKg("");
+    setItemVolumeM3("");
+    setPickedPoint(null);
+  };
+
+  const parseAddressParts = (displayAddress: string) => {
+    const parts = displayAddress
+      .split(",")
+      .map((p) => p.trim())
+      .filter(Boolean);
+    const first = parts[0] ?? "";
+    const inferredCity = parts.length >= 2 ? parts[1] : "";
+    const inferredRegion = parts.length >= 3 ? parts[2] : "";
+    const inferredCountry = parts.length >= 4 ? parts[parts.length - 1] : "";
+    const postalMatch = displayAddress.match(/\b\d{5,10}\b/);
+    return {
+      addressLine1: first,
+      city: inferredCity,
+      region: inferredRegion,
+      country: inferredCountry,
+      postalCode: postalMatch?.[0] ?? "",
+    };
+  };
+
+  const applyReverseAddress = (data: {
+    latitude: number;
+    longitude: number;
+    displayAddress: string;
+    addressLine1?: string | null;
+    city?: string | null;
+    region?: string | null;
+    postalCode?: string | null;
+    country?: string | null;
+  }) => {
+    setLatitude(String(data.latitude));
+    setLongitude(String(data.longitude));
+
+    const fallback = parseAddressParts(data.displayAddress ?? "");
+    setAddressLine1((data.addressLine1 ?? "").trim() || fallback.addressLine1);
+    setCity((data.city ?? "").trim() || fallback.city);
+    setRegion((data.region ?? "").trim() || fallback.region);
+    setPostalCode((data.postalCode ?? "").trim() || fallback.postalCode);
+    setCountry((data.country ?? "").trim() || fallback.country);
   };
 
   const reverseFromCoordsMutation = useMutation({
@@ -147,11 +217,11 @@ export function useDeliveriesPageController() {
       const res = await geocodingRepository.reverse(lat, lng);
       if (!isAppSuccess(res) || !res.body)
         throw new Error(appErrorMessage(res));
-      return res.body.displayAddress?.trim() ?? "";
+      return res.body;
     },
-    onSuccess: (addr) => {
-      if (addr) setAddressLine1(addr);
-      toast.success(addr ? "Address filled from Map.ir." : "No address text returned.");
+    onSuccess: (data) => {
+      applyReverseAddress(data);
+      toast.success(data.displayAddress ? "Address filled from Map.ir." : "No address text returned.");
     },
     onError: (err: Error) =>
       toast.error(err.message || "Reverse geocode failed."),
@@ -183,33 +253,65 @@ export function useDeliveriesPageController() {
       toast.error(err.message || "Search failed."),
   });
 
+  const applyPickedPointMutation = useMutation({
+    mutationFn: async () => {
+      if (!pickedPoint) throw new Error("Pick a location on map first.");
+      const res = await geocodingRepository.reverse(pickedPoint.lat, pickedPoint.lng);
+      if (!isAppSuccess(res) || !res.body) throw new Error(appErrorMessage(res));
+      return res.body;
+    },
+    onSuccess: (data) => {
+      applyReverseAddress(data);
+      setMapPickerOpen(false);
+      toast.success("Location selected from map.");
+    },
+    onError: (err: Error) =>
+      toast.error(err.message || "Could not resolve address for picked point."),
+  });
+
   const addMutation = useMutation({
     mutationFn: async () => {
       const name = recipientName.trim();
       const lat = Number.parseFloat(latitude);
       const lng = Number.parseFloat(longitude);
-      const mins = Number.parseInt(serviceMinutes, 10);
       if (!effectiveOrgId || !name) {
         throw new Error("Organization and recipient name are required.");
+      }
+      if (selectedPlanId === ALL_PLANS) {
+        throw new Error("Select a planning window before adding delivery stops.");
       }
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
         throw new Error("Enter valid latitude and longitude.");
       }
-      if (timeSection && !serviceDate) {
-        throw new Error("Set service date when time section is selected.");
+      const quantity = Number.parseFloat(itemQuantity);
+      if (!Number.isFinite(quantity) || quantity <= 0) {
+        throw new Error("Item quantity must be greater than zero.");
       }
       const body: AddDeliveryStopBody = {
         organizationId: effectiveOrgId,
-        planningWindowId:
-          selectedPlanId === ALL_PLANS ? null : selectedPlanId || null,
+        planningWindowId: selectedPlanId || null,
         recipientName: name,
+        orderId: orderId.trim() || null,
         latitude: lat,
         longitude: lng,
         phone: phone.trim() || null,
         addressLine1: addressLine1.trim() || null,
-        serviceMinutes: Number.isFinite(mins) ? mins : 10,
-        serviceDate: serviceDate || null,
+        city: city.trim() || null,
+        region: region.trim() || null,
+        postalCode: postalCode.trim() || null,
+        country: country.trim() || null,
         timeSection: timeSection ? Number(timeSection) : null,
+        notes: notes.trim() || null,
+        externalRef: externalRef.trim() || null,
+        lineItems: [
+          {
+            sku: itemSku.trim() || null,
+            description: itemDescription.trim() || null,
+            quantity,
+            weightKg: itemWeightKg.trim() ? Number(itemWeightKg) : null,
+            volumeM3: itemVolumeM3.trim() ? Number(itemVolumeM3) : null,
+          },
+        ],
       };
       return addDeliveryStopUseCase(body);
     },
@@ -283,6 +385,10 @@ export function useDeliveriesPageController() {
       if (selectedPlanId !== ALL_PLANS) {
         fd.append("PlanningWindowId", selectedPlanId);
       }
+      fd.append(
+        "ReplaceExistingOrderIds",
+        replaceExistingOrderIdsOnImport ? "true" : "false",
+      );
       const res = await deliveryImportsRepository.importExcel(fd);
       if (!isAppSuccess(res) || !res.body)
         throw new Error(appErrorMessage(res));
@@ -426,6 +532,56 @@ export function useDeliveriesPageController() {
     }
   };
 
+  const downloadDeliveriesExcel = async () => {
+    if (!effectiveOrgId) {
+      toast.error("Select an organization.");
+      return;
+    }
+    try {
+      const blob = await deliveryImportsRepository.exportExcel(
+        effectiveOrgId,
+        selectedPlanId === ALL_PLANS ? null : selectedPlanId,
+      );
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download =
+        selectedPlanId === ALL_PLANS
+          ? `deliveries-${effectiveOrgId}.xlsx`
+          : `deliveries-${selectedPlanId}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Deliveries exported.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Export failed.");
+    }
+  };
+
+  const downloadImportSchemaExcel = async () => {
+    if (!effectiveOrgId) {
+      toast.error("Select an organization.");
+      return;
+    }
+    try {
+      const blob = await deliveryImportsRepository.exportExcelImportSchema(
+        effectiveOrgId,
+        selectedPlanId === ALL_PLANS ? null : selectedPlanId,
+      );
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download =
+        selectedPlanId === ALL_PLANS
+          ? `deliveries-import-schema-${effectiveOrgId}.xlsx`
+          : `deliveries-import-schema-${selectedPlanId}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Import-schema deliveries exported.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Export failed.");
+    }
+  };
+
   const onPickExcel = () => fileInputRef.current?.click();
 
   const onFileChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -447,21 +603,36 @@ export function useDeliveriesPageController() {
       selectedPlanId,
       allPlansValue: ALL_PLANS,
       stops: stopsQuery.data ?? null,
+      filteredStops,
+      selectedOrderFilter,
       orgsLoading: orgsQuery.isLoading,
       planningLoading: planningWindowsQuery.isLoading,
       stopsLoading: stopsQuery.isLoading,
       addDialogOpen,
+      mapPickerOpen,
+      pickedPoint,
       recipientName,
+      orderId,
       latitude,
       longitude,
       addressLine1,
+      city,
+      region,
+      postalCode,
+      country,
       phone,
-      serviceMinutes,
-      serviceDate,
       timeSection,
+      notes,
+      externalRef,
+      itemSku,
+      itemDescription,
+      itemQuantity,
+      itemWeightKg,
+      itemVolumeM3,
       timeSections: TIME_SECTIONS,
       planningStrategy,
       planningStrategies: PLANNING_STRATEGIES,
+      replaceExistingOrderIdsOnImport,
       isAdmin,
       addPending: addMutation.isPending,
       deletePending: deleteMutation.isPending,
@@ -472,6 +643,7 @@ export function useDeliveriesPageController() {
       fleetPdfPending: exportFleetPdfMutation.isPending,
       reverseGeocodePending: reverseFromCoordsMutation.isPending,
       geocodeSearchPending: geocodeSearchMutation.isPending,
+      applyPickedPointPending: applyPickedPointMutation.isPending,
       driversZipPending: exportDriversZipMutation.isPending,
       deletePlanPending: deletePlanMutation.isPending,
       lastImport,
@@ -480,19 +652,35 @@ export function useDeliveriesPageController() {
     actions: {
       setOrgId: (id: string | null) => setSelectedOrgId(id ?? ""),
       setSelectedPlanId,
+      setSelectedOrderFilter,
+      clearOrderFilter: () => setSelectedOrderFilter(null),
       setAddDialogOpen,
+      setMapPickerOpen,
+      setPickedPoint,
       setRecipientName,
+      setOrderId,
       setLatitude,
       setLongitude,
       setAddressLine1,
+      setCity,
+      setRegion,
+      setPostalCode,
+      setCountry,
       setPhone,
-      setServiceMinutes,
-      setServiceDate,
       setTimeSection,
+      setNotes,
+      setExternalRef,
+      setItemSku,
+      setItemDescription,
+      setItemQuantity,
+      setItemWeightKg,
+      setItemVolumeM3,
       setPlanningStrategy,
+      setReplaceExistingOrderIdsOnImport,
       submitAddStop: () => addMutation.mutate(),
       lookupAddressFromCoords: () => reverseFromCoordsMutation.mutate(),
       lookupCoordinatesFromAddress: () => geocodeSearchMutation.mutate(),
+      applyPickedPoint: () => applyPickedPointMutation.mutate(),
       deleteStop: (id: string) => {
         if (
           typeof window !== "undefined" &&
@@ -512,6 +700,8 @@ export function useDeliveriesPageController() {
         deleteAllMutation.mutate();
       },
       downloadTemplate,
+      downloadImportSchemaExcel,
+      downloadDeliveriesExcel,
       onPickExcel,
       onFileChange,
       generateDraftRoutes: () => draftMutation.mutate(),
@@ -532,6 +722,11 @@ export function useDeliveriesPageController() {
       },
       openAddDialog: () => {
         resetAddForm();
+        const lat = Number.parseFloat(latitude);
+        const lng = Number.parseFloat(longitude);
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          setPickedPoint({ lat, lng });
+        }
         setAddDialogOpen(true);
       },
     },

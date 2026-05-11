@@ -56,6 +56,7 @@ export type DriverPortalRouteDto = {
   vehicleName?: string | null;
   name?: string | null;
   status: number;
+  isSelected?: boolean;
   plannedStartUtc?: string | null;
   plannedEndUtc?: string | null;
   startStorageName?: string | null;

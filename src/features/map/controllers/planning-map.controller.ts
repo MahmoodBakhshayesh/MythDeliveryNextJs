@@ -261,7 +261,7 @@ export function usePlanningMapController() {
       latitude: pendingLat,
       longitude: pendingLng,
       addressLine1: addressLine1.trim() || null,
-      serviceMinutes: 10,
+      lineItems: [{ quantity: 1 }],
     });
   };
 

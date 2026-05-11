@@ -91,9 +91,17 @@ export function usePlanWorkflowController() {
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
   const [addressLine1, setAddressLine1] = useState("");
+  const [city, setCity] = useState("");
+  const [region, setRegion] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+  const [country, setCountry] = useState("");
   const [phone, setPhone] = useState("");
-  const [serviceMinutes, setServiceMinutes] = useState("10");
+  const [mapPickerOpen, setMapPickerOpen] = useState(false);
+  const [pickedPoint, setPickedPoint] = useState<{ lat: number; lng: number } | null>(null);
   const [timeSection, setTimeSection] = useState("");
+  const [itemSku, setItemSku] = useState("");
+  const [itemDescription, setItemDescription] = useState("");
+  const [itemQuantity, setItemQuantity] = useState("1");
 
   const [lastImport, setLastImport] = useState<ImportJobResponseDto | null>(
     null,
@@ -426,9 +434,56 @@ export function usePlanWorkflowController() {
     setLatitude("");
     setLongitude("");
     setAddressLine1("");
+    setCity("");
+    setRegion("");
+    setPostalCode("");
+    setCountry("");
     setPhone("");
-    setServiceMinutes("10");
     setTimeSection("");
+    setItemSku("");
+    setItemDescription("");
+    setItemQuantity("1");
+    setPickedPoint(null);
+  };
+
+  const parseAddressParts = (displayAddress: string) => {
+    const parts = displayAddress
+      .split(",")
+      .map((p) => p.trim())
+      .filter(Boolean);
+    const first = parts[0] ?? "";
+    const inferredCity = parts.length >= 2 ? parts[1] : "";
+    const inferredRegion = parts.length >= 3 ? parts[2] : "";
+    const inferredCountry = parts.length >= 4 ? parts[parts.length - 1] : "";
+    const postalMatch = displayAddress.match(/\b\d{5,10}\b/);
+    return {
+      addressLine1: first,
+      city: inferredCity,
+      region: inferredRegion,
+      country: inferredCountry,
+      postalCode: postalMatch?.[0] ?? "",
+    };
+  };
+
+  const applyReverseAddress = (data: {
+    latitude: number;
+    longitude: number;
+    displayAddress: string;
+    addressLine1?: string | null;
+    city?: string | null;
+    region?: string | null;
+    postalCode?: string | null;
+    country?: string | null;
+  }) => {
+    setLatitude(String(data.latitude));
+    setLongitude(String(data.longitude));
+
+    const fallback = parseAddressParts(data.displayAddress ?? "");
+    setAddressLine1((data.addressLine1 ?? "").trim() || fallback.addressLine1);
+    setCity((data.city ?? "").trim() || fallback.city);
+    setRegion((data.region ?? "").trim() || fallback.region);
+    setPostalCode((data.postalCode ?? "").trim() || fallback.postalCode);
+    setCountry((data.country ?? "").trim() || fallback.country);
   };
 
   const reverseFromCoordsMutation = useMutation({
@@ -441,14 +496,30 @@ export function usePlanWorkflowController() {
       const res = await geocodingRepository.reverse(lat, lng);
       if (!isAppSuccess(res) || !res.body)
         throw new Error(appErrorMessage(res));
-      return res.body.displayAddress?.trim() ?? "";
+      return res.body;
     },
-    onSuccess: (addr) => {
-      if (addr) setAddressLine1(addr);
-      toast.success(addr ? "Address filled from Map.ir." : "No address text returned.");
+    onSuccess: (data) => {
+      applyReverseAddress(data);
+      toast.success(data.displayAddress ? "Address filled from Map.ir." : "No address text returned.");
     },
     onError: (err: Error) =>
       toast.error(err.message || "Reverse geocode failed."),
+  });
+
+  const applyPickedPointMutation = useMutation({
+    mutationFn: async () => {
+      if (!pickedPoint) throw new Error("Pick a location on map first.");
+      const res = await geocodingRepository.reverse(pickedPoint.lat, pickedPoint.lng);
+      if (!isAppSuccess(res) || !res.body) throw new Error(appErrorMessage(res));
+      return res.body;
+    },
+    onSuccess: (data) => {
+      applyReverseAddress(data);
+      setMapPickerOpen(false);
+      toast.success("Location selected from map.");
+    },
+    onError: (err: Error) =>
+      toast.error(err.message || "Could not resolve address for picked point."),
   });
 
   const geocodeSearchMutation = useMutation({
@@ -482,7 +553,6 @@ export function usePlanWorkflowController() {
       const name = recipientName.trim();
       const lat = Number.parseFloat(latitude);
       const lng = Number.parseFloat(longitude);
-      const mins = Number.parseInt(serviceMinutes, 10);
       if (!effectiveOrgId || !planId || !name) {
         throw new Error("Organization, plan, and recipient are required.");
       }
@@ -492,6 +562,10 @@ export function usePlanWorkflowController() {
       if (timeSection && !planDate) {
         throw new Error("Plan date is required when using a time section.");
       }
+      const quantity = Number.parseFloat(itemQuantity);
+      if (!Number.isFinite(quantity) || quantity <= 0) {
+        throw new Error("Item quantity must be greater than zero.");
+      }
       const body: AddDeliveryStopBody = {
         organizationId: effectiveOrgId,
         planningWindowId: planId,
@@ -499,10 +573,19 @@ export function usePlanWorkflowController() {
         latitude: lat,
         longitude: lng,
         addressLine1: addressLine1.trim() || null,
+        city: city.trim() || null,
+        region: region.trim() || null,
+        postalCode: postalCode.trim() || null,
+        country: country.trim() || null,
         phone: phone.trim() || null,
-        serviceMinutes: Number.isFinite(mins) ? mins : 10,
-        serviceDate: planDate || null,
         timeSection: timeSection ? Number(timeSection) : null,
+        lineItems: [
+          {
+            sku: itemSku.trim() || null,
+            description: itemDescription.trim() || null,
+            quantity,
+          },
+        ],
       };
       return addDeliveryStopUseCase(body);
     },
@@ -784,9 +867,17 @@ export function usePlanWorkflowController() {
       latitude,
       longitude,
       addressLine1,
+      city,
+      region,
+      postalCode,
+      country,
       phone,
-      serviceMinutes,
+      mapPickerOpen,
+      pickedPoint,
       timeSection,
+      itemSku,
+      itemDescription,
+      itemQuantity,
       timeSections: TIME_SECTIONS,
       assignmentDriverId,
       assignmentVehicleId,
@@ -801,6 +892,7 @@ export function usePlanWorkflowController() {
       addStopPending: addStopMutation.isPending,
       reverseGeocodePending: reverseFromCoordsMutation.isPending,
       geocodeSearchPending: geocodeSearchMutation.isPending,
+      applyPickedPointPending: applyPickedPointMutation.isPending,
       importPending: importMutation.isPending,
       draftPending: draftMutation.isPending,
       confirmPending: confirmMutation.isPending,
@@ -831,9 +923,17 @@ export function usePlanWorkflowController() {
       setLatitude,
       setLongitude,
       setAddressLine1,
+      setCity,
+      setRegion,
+      setPostalCode,
+      setCountry,
       setPhone,
-      setServiceMinutes,
+      setMapPickerOpen,
+      setPickedPoint,
       setTimeSection,
+      setItemSku,
+      setItemDescription,
+      setItemQuantity,
       setAssignmentDriverId,
       setAssignmentVehicleId,
       setAssignmentFromLocal,
@@ -854,6 +954,7 @@ export function usePlanWorkflowController() {
       addStop: () => addStopMutation.mutate(),
       lookupAddressFromCoords: () => reverseFromCoordsMutation.mutate(),
       lookupCoordinatesFromAddress: () => geocodeSearchMutation.mutate(),
+      applyPickedPoint: () => applyPickedPointMutation.mutate(),
       downloadTemplate,
       onPickExcel,
       onFileChange,

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { Download, Plus, Route, Trash2, Upload } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Label } from "@/components/ui/label";
@@ -30,6 +31,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
+const LocationPickerLeaflet = dynamic(
+  () =>
+    import("@/features/map/components/location-picker-leaflet").then(
+      (m) => m.LocationPickerLeaflet,
+    ),
+  { ssr: false },
+);
+
 export function DeliveriesPageView({
   viewState,
   actions,
@@ -45,21 +54,36 @@ export function DeliveriesPageView({
     selectedPlanId,
     allPlansValue,
     stops,
+    filteredStops,
+    selectedOrderFilter,
     orgsLoading,
     planningLoading,
     stopsLoading,
     addDialogOpen,
+    mapPickerOpen,
+    pickedPoint,
     recipientName,
+    orderId,
     latitude,
     longitude,
     addressLine1,
+    city,
+    region,
+    postalCode,
+    country,
     phone,
-    serviceMinutes,
-    serviceDate,
     timeSection,
+    notes,
+    externalRef,
+    itemSku,
+    itemDescription,
+    itemQuantity,
+    itemWeightKg,
+    itemVolumeM3,
     timeSections,
     planningStrategy,
     planningStrategies,
+    replaceExistingOrderIdsOnImport,
     isAdmin,
     addPending,
     deletePending,
@@ -70,6 +94,7 @@ export function DeliveriesPageView({
     fleetPdfPending,
     reverseGeocodePending,
     geocodeSearchPending,
+    applyPickedPointPending,
     driversZipPending,
     deletePlanPending,
     lastImport,
@@ -180,6 +205,26 @@ export function DeliveriesPageView({
           </Button>
           <Button
             type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void actions.downloadImportSchemaExcel()}
+            disabled={!selectedOrgId}
+          >
+            <Download className="me-2 size-4" />
+            Export import-schema Excel
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void actions.downloadDeliveriesExcel()}
+            disabled={!selectedOrgId}
+          >
+            <Download className="me-2 size-4" />
+            Export full deliveries Excel
+          </Button>
+          <Button
+            type="button"
             size="sm"
             onClick={() => actions.onPickExcel()}
             disabled={importPending || !selectedOrgId}
@@ -187,6 +232,16 @@ export function DeliveriesPageView({
             <Upload className="me-2 size-4" />
             {importPending ? t("importing") : t("uploadExcel")}
           </Button>
+          <label className="ms-1 inline-flex items-center gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={replaceExistingOrderIdsOnImport}
+              onChange={(e) =>
+                actions.setReplaceExistingOrderIdsOnImport(e.target.checked)
+              }
+            />
+            Replace existing same OrderId on import
+          </label>
           <input
             ref={fileInputRef}
             type="file"
@@ -306,19 +361,48 @@ export function DeliveriesPageView({
         </div>
       ) : stops?.length ? (
         <div className="overflow-hidden rounded-lg border">
+          {selectedOrderFilter ? (
+            <div className="bg-muted/30 flex items-center justify-between border-b px-3 py-2 text-xs">
+              <span>Filtered by Order ID: <strong>{selectedOrderFilter}</strong></span>
+              <Button type="button" variant="ghost" size="sm" onClick={() => actions.clearOrderFilter()}>
+                Clear
+              </Button>
+            </div>
+          ) : null}
           <table className="w-full text-sm">
             <thead className="bg-muted/60">
               <tr className="text-start">
                 <th className="px-3 py-2 font-medium">{tm("recipientName")}</th>
+                <th className="px-3 py-2 font-medium">Order ID</th>
                 <th className="px-3 py-2 font-medium">{tc("phone")}</th>
                 <th className="px-3 py-2 font-medium">{t("coordinates")}</th>
                 <th className="px-3 py-2 font-medium w-[72px]" />
               </tr>
             </thead>
             <tbody>
-              {stops.map((s) => (
+              {filteredStops.map((s) => (
                 <tr key={s.id} className="border-t">
                   <td className="px-3 py-2 font-medium">{s.recipientName}</td>
+                  <td className="text-muted-foreground px-3 py-2">
+                    {s.orderId ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          actions.setSelectedOrderFilter(
+                            selectedOrderFilter === s.orderId ? null : (s.orderId ?? null),
+                          )
+                        }
+                        className={cn(
+                          "rounded px-2 py-0.5 text-xs underline-offset-2 hover:underline",
+                          selectedOrderFilter === s.orderId ? "bg-primary/10 text-primary font-semibold" : "bg-muted",
+                        )}
+                      >
+                        {s.orderId}
+                      </button>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
                   <td className="text-muted-foreground px-3 py-2">
                     {s.phone ?? "—"}
                   </td>
@@ -371,6 +455,15 @@ export function DeliveriesPageView({
                 value={recipientName}
                 onChange={(e) => actions.setRecipientName(e.target.value)}
                 placeholder={tm("recipientPlaceholder")}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="stop-order-id">Order ID</Label>
+              <Input
+                id="stop-order-id"
+                value={orderId}
+                onChange={(e) => actions.setOrderId(e.target.value)}
+                placeholder="ORD-1001"
               />
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
@@ -432,42 +525,75 @@ export function DeliveriesPageView({
                   ? tg("searching")
                   : t("lookupAddressFromCoords")}
               </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => actions.setMapPickerOpen(true)}
+                >
+                  Select address from map
+                </Button>
               <p className="text-muted-foreground text-xs">
                 {tg("hintDeliveries")}
               </p>
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
               <div className="grid gap-2">
-                <Label htmlFor="stop-service-date">Service date (optional)</Label>
+                <Label htmlFor="stop-city">City</Label>
                 <Input
-                  id="stop-service-date"
-                  type="date"
-                  value={serviceDate}
-                  onChange={(e) => actions.setServiceDate(e.target.value)}
+                  id="stop-city"
+                  value={city}
+                  onChange={(e) => actions.setCity(e.target.value)}
                 />
               </div>
               <div className="grid gap-2">
-                <Label>Time section (optional)</Label>
-                <Select
-                  value={timeSection}
-                  onValueChange={(v) => actions.setTimeSection(v ?? "")}
-                  items={timeSections.map((s) => ({
-                    value: String(s.value),
-                    label: s.label,
-                  }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select section" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {timeSections.map((s) => (
-                      <SelectItem key={s.value} value={String(s.value)}>
-                        {s.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="stop-region">Region/State</Label>
+                <Input
+                  id="stop-region"
+                  value={region}
+                  onChange={(e) => actions.setRegion(e.target.value)}
+                />
               </div>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="stop-postal">Postal code</Label>
+                <Input
+                  id="stop-postal"
+                  value={postalCode}
+                  onChange={(e) => actions.setPostalCode(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="stop-country">Country</Label>
+                <Input
+                  id="stop-country"
+                  value={country}
+                  onChange={(e) => actions.setCountry(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label>Time section (optional)</Label>
+              <Select
+                value={timeSection}
+                onValueChange={(v) => actions.setTimeSection(v ?? "")}
+                items={timeSections.map((s) => ({
+                  value: String(s.value),
+                  label: s.label,
+                }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select section" />
+                </SelectTrigger>
+                <SelectContent>
+                  {timeSections.map((s) => (
+                    <SelectItem key={s.value} value={String(s.value)}>
+                      {s.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
               <div className="grid gap-2">
@@ -479,13 +605,70 @@ export function DeliveriesPageView({
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="stop-mins">{t("serviceMinutes")}</Label>
+                <Label htmlFor="stop-external-ref">External ref</Label>
                 <Input
-                  id="stop-mins"
-                  inputMode="numeric"
-                  value={serviceMinutes}
-                  onChange={(e) => actions.setServiceMinutes(e.target.value)}
+                  id="stop-external-ref"
+                  value={externalRef}
+                  onChange={(e) => actions.setExternalRef(e.target.value)}
                 />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="stop-notes">Notes</Label>
+              <Input
+                id="stop-notes"
+                value={notes}
+                onChange={(e) => actions.setNotes(e.target.value)}
+              />
+            </div>
+            <div className="rounded-md border p-3">
+              <p className="mb-3 text-sm font-medium">Item details (Excel-compatible row)</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="item-sku">SKU</Label>
+                  <Input
+                    id="item-sku"
+                    value={itemSku}
+                    onChange={(e) => actions.setItemSku(e.target.value)}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="item-description">Description</Label>
+                  <Input
+                    id="item-description"
+                    value={itemDescription}
+                    onChange={(e) => actions.setItemDescription(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                <div className="grid gap-2">
+                  <Label htmlFor="item-quantity">Quantity *</Label>
+                  <Input
+                    id="item-quantity"
+                    inputMode="decimal"
+                    value={itemQuantity}
+                    onChange={(e) => actions.setItemQuantity(e.target.value)}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="item-weight">Weight (kg)</Label>
+                  <Input
+                    id="item-weight"
+                    inputMode="decimal"
+                    value={itemWeightKg}
+                    onChange={(e) => actions.setItemWeightKg(e.target.value)}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="item-volume">Volume (m3)</Label>
+                  <Input
+                    id="item-volume"
+                    inputMode="decimal"
+                    value={itemVolumeM3}
+                    onChange={(e) => actions.setItemVolumeM3(e.target.value)}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -503,6 +686,37 @@ export function DeliveriesPageView({
               disabled={addPending}
             >
               {addPending ? tc("creating") : tm("addStop")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={mapPickerOpen} onOpenChange={actions.setMapPickerOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Select location on map</DialogTitle>
+          </DialogHeader>
+          <LocationPickerLeaflet
+            picked={pickedPoint}
+            onPick={(lat, lng) => actions.setPickedPoint({ lat, lng })}
+          />
+          <p className="text-muted-foreground text-xs">
+            Click map to place marker. We will fill latitude/longitude and best-effort address fields.
+          </p>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => actions.setMapPickerOpen(false)}
+            >
+              {tc("cancel")}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => actions.applyPickedPoint()}
+              disabled={applyPickedPointPending || !pickedPoint}
+            >
+              {applyPickedPointPending ? "Applying..." : "Use selected point"}
             </Button>
           </DialogFooter>
         </DialogContent>

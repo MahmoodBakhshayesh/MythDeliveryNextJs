@@ -25,4 +25,16 @@ export const deliveryImportsRepository = {
       "POST",
     );
   },
+
+  exportExcel(organizationId: string, planningWindowId?: string | null) {
+    const q = new URLSearchParams({ organizationId });
+    if (planningWindowId) q.set("planningWindowId", planningWindowId);
+    return apiBlob(`/api/DeliveryImports/excel-export?${q.toString()}`);
+  },
+
+  exportExcelImportSchema(organizationId: string, planningWindowId?: string | null) {
+    const q = new URLSearchParams({ organizationId });
+    if (planningWindowId) q.set("planningWindowId", planningWindowId);
+    return apiBlob(`/api/DeliveryImports/excel-export-import-schema?${q.toString()}`);
+  },
 };

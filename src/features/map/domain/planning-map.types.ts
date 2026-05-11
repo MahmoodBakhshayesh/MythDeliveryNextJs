@@ -10,10 +10,13 @@ export type DeliveryStopResponseDto = {
   longitude: number;
   addressLine1?: string | null;
   city?: string | null;
-  serviceMinutes?: number;
   serviceDate?: string | null;
   timeSection?: number | null;
   status?: number;
+  orderId?: string | null;
+  selectedRouteId?: string | null;
+  selectedRouteStopId?: string | null;
+  selectedRouteSequence?: number | null;
 };
 
 export type RouteStopDto = {
@@ -31,6 +34,7 @@ export type RouteResponseDto = {
   driverId: string;
   vehicleId: string;
   driverName?: string | null;
+  isSelected?: boolean;
   stops: RouteStopDto[];
 };
 
@@ -71,13 +75,25 @@ export type AddDeliveryStopBody = {
   organizationId: string;
   planningWindowId?: string | null;
   recipientName: string;
+  orderId?: string | null;
   latitude: number;
   longitude: number;
   addressLine1?: string | null;
+  city?: string | null;
+  region?: string | null;
+  postalCode?: string | null;
+  country?: string | null;
   phone?: string | null;
-  serviceMinutes?: number;
-  serviceDate?: string | null;
   timeSection?: number | null;
+  notes?: string | null;
+  externalRef?: string | null;
+  lineItems?: {
+    sku?: string | null;
+    description?: string | null;
+    quantity?: number;
+    weightKg?: number | null;
+    volumeM3?: number | null;
+  }[];
 };
 
 export type RouteLayerModel = {
