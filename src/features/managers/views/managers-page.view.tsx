@@ -125,7 +125,8 @@ export function ManagersPageView({ viewState, actions }: ManagersPageViewModel) 
                 <table className="w-full text-sm">
                   <thead className="bg-muted/60">
                     <tr className="text-start">
-                      <th className="px-3 py-2 font-medium">{t("email")}</th>
+                      <th className="px-3 py-2 font-medium">{t("userName")}</th>
+                      <th className="px-3 py-2 font-medium">{tc("email")}</th>
                       <th className="px-3 py-2 font-medium">{tc("name")}</th>
                       <th className="px-3 py-2 font-medium w-[100px]" />
                     </tr>
@@ -133,7 +134,8 @@ export function ManagersPageView({ viewState, actions }: ManagersPageViewModel) 
                   <tbody>
                     {rows.map((m) => (
                       <tr key={m.id} className="border-t">
-                        <td className="px-3 py-2 font-medium">{m.email}</td>
+                        <td className="px-3 py-2 font-medium">{m.userName}</td>
+                        <td className="text-muted-foreground px-3 py-2">{m.email?.trim() || "—"}</td>
                         <td className="text-muted-foreground px-3 py-2">
                           {m.displayName?.trim() || "—"}
                         </td>
@@ -205,7 +207,17 @@ export function ManagersPageView({ viewState, actions }: ManagersPageViewModel) 
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="mgr-email">{t("email")}</Label>
+              <Label htmlFor="mgr-username">{t("userName")}</Label>
+              <Input
+                id="mgr-username"
+                autoComplete="username"
+                value={userName}
+                onChange={(e) => actions.setUserName(e.target.value)}
+                placeholder={t("userNamePlaceholder")}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="mgr-email">{t("emailOptional")}</Label>
               <Input
                 id="mgr-email"
                 type="email"
@@ -213,15 +225,6 @@ export function ManagersPageView({ viewState, actions }: ManagersPageViewModel) 
                 value={email}
                 onChange={(e) => actions.setEmail(e.target.value)}
                 placeholder="name@company.com"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="mgr-username">{t("userNameOptional")}</Label>
-              <Input
-                id="mgr-username"
-                value={userName}
-                onChange={(e) => actions.setUserName(e.target.value)}
-                placeholder={t("userNamePlaceholder")}
               />
             </div>
             <div className="space-y-2">

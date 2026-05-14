@@ -14,9 +14,9 @@ export type DriverResponse = {
 export type AddDriverBody = {
   organizationId: string;
   distributionCenterId: string;
-  email: string;
-  /** If omitted, API defaults to email. */
-  userName?: string | null;
+  userName: string;
+  /** Optional; when set must be globally unique. */
+  email?: string | null;
   password: string;
   passwordConfirm: string;
   displayName: string;

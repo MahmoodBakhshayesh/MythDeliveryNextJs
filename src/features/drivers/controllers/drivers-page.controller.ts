@@ -169,8 +169,9 @@ export function useDriversPageController() {
           throw new Error(appErrorMessage(res));
         return res.body;
       }
+      const un = userName.trim();
+      if (!un) throw new Error("Username is required for the driver login.");
       const mail = email.trim();
-      if (!mail) throw new Error("Email is required for the driver login.");
       if (!password || password !== passwordConfirm) {
         throw new Error("Password and confirmation must match and cannot be empty.");
       }
@@ -180,8 +181,8 @@ export function useDriversPageController() {
       const body: AddDriverBody = {
         organizationId: effectiveOrgId,
         distributionCenterId: addDistributionCenterId,
-        email: mail,
-        userName: userName.trim() || null,
+        userName: un,
+        email: mail || null,
         password,
         passwordConfirm,
         displayName: name,

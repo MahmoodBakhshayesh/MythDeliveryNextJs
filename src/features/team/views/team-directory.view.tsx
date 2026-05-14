@@ -76,7 +76,8 @@ export function TeamDirectoryView({
     const rows: {
       organizationName: string;
       depot: string;
-      email: string;
+      userName: string;
+      email: string | null | undefined;
       displayName: string | null | undefined;
     }[] = [];
     for (const block of data?.managersByOrg ?? []) {
@@ -84,6 +85,7 @@ export function TeamDirectoryView({
         rows.push({
           organizationName: block.organizationName,
           depot: m.distributionCenterName,
+          userName: m.userName,
           email: m.email,
           displayName: m.displayName,
         });
@@ -92,7 +94,11 @@ export function TeamDirectoryView({
     rows.sort((a, b) => {
       const o = a.organizationName.localeCompare(b.organizationName);
       if (o !== 0) return o;
-      return a.depot.localeCompare(b.depot) || a.email.localeCompare(b.email);
+      const d = a.depot.localeCompare(b.depot);
+      if (d !== 0) return d;
+      const u = a.userName.localeCompare(b.userName);
+      if (u !== 0) return u;
+      return (a.email ?? "").localeCompare(b.email ?? "");
     });
     return rows;
   }, [data?.managersByOrg]);
@@ -255,16 +261,18 @@ export function TeamDirectoryView({
                   <tr>
                     <th className="px-3 py-2 text-start font-medium">{t("organization")}</th>
                     <th className="px-3 py-2 text-start font-medium">{t("depot")}</th>
+                    <th className="px-3 py-2 text-start font-medium">{t("userName")}</th>
                     <th className="px-3 py-2 text-start font-medium">{t("email")}</th>
                     <th className="px-3 py-2 text-start font-medium">{t("displayName")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {managersFlat.map((row, i) => (
-                    <tr key={`${row.email}-${i}`} className="border-t">
+                    <tr key={`${row.organizationName}-${row.depot}-${row.userName}-${i}`} className="border-t">
                       <td className="px-3 py-2">{row.organizationName}</td>
                       <td className="text-muted-foreground px-3 py-2">{row.depot}</td>
-                      <td className="px-3 py-2 font-medium">{row.email}</td>
+                      <td className="px-3 py-2 font-medium">{row.userName}</td>
+                      <td className="text-muted-foreground px-3 py-2">{row.email?.trim() || "—"}</td>
                       <td className="text-muted-foreground px-3 py-2">
                         {row.displayName?.trim() || "—"}
                       </td>

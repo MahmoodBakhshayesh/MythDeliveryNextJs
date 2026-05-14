@@ -90,9 +90,9 @@ export function useManagersPageController() {
   });
 
   const submitManager = () => {
-    const em = email.trim();
-    if (!effectiveOrgId || !em) {
-      toast.error("Select an organization and enter an email.");
+    const un = userName.trim();
+    if (!effectiveOrgId || !un) {
+      toast.error("Select an organization and enter a username.");
       return;
     }
     if (!distributionCenterId) {
@@ -106,8 +106,8 @@ export function useManagersPageController() {
     addMutation.mutate({
       organizationId: effectiveOrgId,
       distributionCenterId,
-      email: em,
-      userName: userName.trim() || null,
+      userName: un,
+      email: email.trim() || null,
       displayName: displayName.trim() || null,
       phone: phone.trim() || null,
       password,

@@ -418,7 +418,17 @@ export function DriversPageView({ viewState, actions }: DriversPageViewModel) {
               <>
                 <p className="text-muted-foreground text-sm">{t("createLoginHint")}</p>
                 <div className="grid gap-2">
-                  <Label htmlFor="drv-email">{tc("email")}</Label>
+                  <Label htmlFor="drv-username">{t("loginUsername")}</Label>
+                  <Input
+                    id="drv-username"
+                    autoComplete="username"
+                    value={userName}
+                    onChange={(e) => actions.setUserName(e.target.value)}
+                    placeholder={t("loginUsernamePlaceholder")}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="drv-email">{t("emailOptional")}</Label>
                   <Input
                     id="drv-email"
                     type="email"
@@ -426,16 +436,6 @@ export function DriversPageView({ viewState, actions }: DriversPageViewModel) {
                     value={email}
                     onChange={(e) => actions.setEmail(e.target.value)}
                     placeholder={t("emailPlaceholder")}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="drv-username">{t("loginUsername")}</Label>
-                  <Input
-                    id="drv-username"
-                    autoComplete="off"
-                    value={userName}
-                    onChange={(e) => actions.setUserName(e.target.value)}
-                    placeholder={t("loginUsernamePlaceholder")}
                   />
                 </div>
                 <div className="grid gap-2">

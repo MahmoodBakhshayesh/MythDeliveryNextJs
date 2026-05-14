@@ -6,15 +6,17 @@ export type ManagerResponseDto = {
   distributionCenterId: string;
   distributionCenterName: string;
   appUserId: string;
-  email: string;
+  userName: string;
+  email?: string | null;
   displayName?: string | null;
 };
 
 export type AddManagerBody = {
   organizationId: string;
   distributionCenterId: string;
-  email: string;
-  userName?: string | null;
+  userName: string;
+  /** Optional; when set must be globally unique. */
+  email?: string | null;
   password: string;
   passwordConfirm: string;
   displayName?: string | null;
