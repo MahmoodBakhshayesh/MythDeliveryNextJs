@@ -28,6 +28,7 @@ export type UserDirectoryEntry = {
   phoneNumber?: string | null;
   displayName?: string | null;
   roles: string[];
+
   /** Organization IDs from UserOrganizations (empty for admins). */
   organizationIds?: string[];
   isLockedOut: boolean;
