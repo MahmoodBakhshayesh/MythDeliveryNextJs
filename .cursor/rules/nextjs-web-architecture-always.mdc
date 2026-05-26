@@ -1,0 +1,48 @@
+---
+description: Web-first Next.js architecture (4 layers, performance, reuse)
+alwaysApply: true
+---
+
+# Web-first architecture
+
+Default stack: **Next.js App Router**, **TanStack Query**, **Zustand** (or similar) for session, **shadcn/ui** + Tailwind.
+
+## Layering (4 layers — do not add DataSource unless needed)
+
+```text
+page.tsx → useXController() → useCase() → repository.apiJson()
+                ↓
+           XView (presentational)
+```
+
+- **Pages** stay thin (≤ ~15 lines): wire controller, render view.
+- **Views** receive a **view model** (`viewState` + `actions` or spread props); no `fetch`, no repository imports.
+- **Controllers** are **`use*Controller` hooks**: React Query, form/dialog state, toasts, navigation.
+- **Use cases** are **plain async functions**; map API errors to `throw new Error(...)`.
+- **Repositories** are **objects or modules** calling **`apiJson`** from `@/lib/api-client`.
+
+## Folders
+
+| Path | Purpose |
+|------|---------|
+| `src/app/` | Routes, layouts, guards |
+| `src/features/<name>/` | Domain feature modules |
+| `src/components/` | Shared layout + `ui/` (design system) |
+| `src/lib/` | API client, env, query keys, RBAC helpers |
+| `src/stores/` | Client global state (auth) |
+| `src/providers/` | QueryClient, theme, i18n |
+
+Put cross-feature logic in `src/lib/` or `src/hooks/`, not inside random features.
+
+## From brewlab (use sparingly)
+
+- **`route-paths` module** — single source for hrefs (avoid string drift).
+- **`src/widgets/` or `src/components/forms/`** — shared field/button chrome when many screens share mobile-like inputs.
+- **`FailureBus` / central toast helper** — only if error handling becomes inconsistent.
+
+## Avoid unless requested
+
+- Flutter-style `createAppContainer()` for every app.
+- Repository interfaces + classes when a typed object + use cases suffice.
+- Server Actions for all CRUD (use `apiJson` + ASP.NET/API backend pattern).
+- Duplicating list state in Zustand when Query already caches it.

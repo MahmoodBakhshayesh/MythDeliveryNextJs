@@ -1,0 +1,39 @@
+---
+description: src/lib — API client, env, query keys, shared helpers
+globs: src/lib/**/*,src/stores/**/*,src/types/**/*
+alwaysApply: false
+---
+
+# lib, stores, and API types
+
+## `apiJson` (`src/lib/api-client.ts`)
+
+- Single gateway for JSON APIs: auth header, 401 refresh, `AppResponse<T>` parsing.
+- Features **never** call `fetch(`${baseUrl}...`)` directly.
+
+## `api-types` / `types/api.ts`
+
+- `AppResponse<T>`, `isAppSuccess`, `appErrorMessage` — use in use cases consistently.
+
+## `query-keys.ts`
+
+- **All** TanStack Query keys as `queryKeys.entity(...)` factories.
+- Colocate invalidation targets here; controllers pass these to `invalidateQueries`.
+
+## `env.ts`
+
+- Read `process.env.NEXT_PUBLIC_*` in one place (`getApiBaseUrl()`).
+
+## Stores (`src/stores/`)
+
+- **Session / auth / UI prefs** only.
+- Do not mirror server lists in Zustand when Query already holds them.
+
+## RBAC helpers (`roles.ts`, `use-is-admin.ts`, …)
+
+- Keep role checks in **lib hooks**; views/controllers call hooks — avoid sprinkling string role compares in JSX.
+
+## Optional brewlab-style additions
+
+- `jsonValidators` helpers if API shapes are loose.
+- `src/lib/route-paths.ts` exporting path constants and `getPostLoginRoute(roles)`.

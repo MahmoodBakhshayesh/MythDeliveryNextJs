@@ -83,9 +83,11 @@ export type RouteStopDto = {
 export type RouteResponseDto = {
   id: string;
   planningWindowId: string;
-  driverId: string;
+  driverId?: string | null;
   vehicleId: string;
   driverName?: string | null;
+  vehicleName?: string | null;
+  name?: string | null;
   isSelected?: boolean;
   /** RouteStatus from API (0 Draft … 4 Cancelled). */
   status?: number;
@@ -152,7 +154,7 @@ export type AddDeliveryStopBody = {
 
 export type RouteLayerModel = {
   routeId: string;
-  driverId: string;
+  driverId?: string | null;
   driverName: string;
   color: string;
   polyline: [number, number][];

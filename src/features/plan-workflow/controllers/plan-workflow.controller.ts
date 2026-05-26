@@ -12,12 +12,11 @@ import {
 } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import type {
-  AddDeliveryStopBody,
-  PlanningWindowResponseDto,
-} from "@/features/map/domain/planning-map.types";
 import {
   POLYGON_REGION_STORAGE_KEY,
+  type AddDeliveryStopBody,
+  type DeliveryStopResponseDto,
+  type PlanningWindowResponseDto,
   type PolygonRegionAlgorithm,
   type UpdateDeliveryStopBody,
 } from "@/features/map/domain/planning-map.types";
@@ -27,9 +26,6 @@ import { planningRouteEditsRepository } from "@/features/map/repositories/planni
 import { addDeliveryStopUseCase } from "@/features/map/usecases/add-delivery-stop.usecase";
 import { loadPlanningMapUseCase } from "@/features/map/usecases/load-planning-map.usecase";
 import { buildMapOverlay } from "@/features/map/lib/build-map-overlay";
-import type { AddDriverVehicleAssignmentBody } from "@/features/drivers/domain/driver.types";
-import { driverVehicleAssignmentsRepository } from "@/features/drivers/repositories/driver-vehicle-assignments.repository";
-import { listDriverVehicleAssignmentsUseCase } from "@/features/drivers/usecases/list-driver-vehicle-assignments.usecase";
 import { listDriversUseCase } from "@/features/drivers/usecases/list-drivers.usecase";
 import { listVehiclesUseCase } from "@/features/fleet/usecases/list-vehicles.usecase";
 import {
@@ -45,8 +41,43 @@ import { useAutoGeocodeFill } from "@/features/geocoding/hooks/use-auto-geocode-
 import { geocodingRepository } from "@/features/geocoding/repositories/geocoding.repository";
 import { queryKeys } from "@/lib/query-keys";
 import { appErrorMessage, isAppSuccess } from "@/lib/api-types";
+import { useAuthStore } from "@/stores/auth-store";
+import {
+  getFleetShellTier,
+  isManagerOnlyFleetAccount,
+} from "@/lib/roles";
+import type { VehicleResponse } from "@/features/fleet/domain/vehicle.types";
 
-export const PLAN_WORKFLOW_STEPS = 6;
+export const PLAN_WORKFLOW_STEPS = 7;
+
+function sumStopLoad(stops: DeliveryStopResponseDto[]) {
+  let weight = 0;
+  let volume = 0;
+  for (const s of stops) {
+    weight += Number(s.weightKg ?? 0);
+    volume += Number(s.volumeM3 ?? 0);
+  }
+  return { weight, volume };
+}
+
+function validateFleetCapacity(
+  stops: DeliveryStopResponseDto[],
+  vehicles: VehicleResponse[],
+  selectedVehicleIds: string[],
+): string | null {
+  const selected = vehicles.filter((v) => selectedVehicleIds.includes(v.id));
+  if (selected.length === 0) return "Select at least one fleet vehicle.";
+  const { weight, volume } = sumStopLoad(stops);
+  const maxWeight = selected.reduce((a, v) => a + Number(v.maxWeightKg), 0);
+  const maxVolume = selected.reduce((a, v) => a + Number(v.maxVolumeM3), 0);
+  if (weight > maxWeight) {
+    return `Total delivery weight (${weight} kg) exceeds combined fleet capacity (${maxWeight} kg).`;
+  }
+  if (volume > maxVolume) {
+    return `Total delivery volume (${volume} m³) exceeds combined fleet capacity (${maxVolume} m³).`;
+  }
+  return null;
+}
 
 export const PLANNING_STRATEGIES = [
   "SpatialCell",
@@ -87,17 +118,17 @@ export function usePlanWorkflowController() {
   const [polygonAlgorithm, setPolygonAlgorithm] =
     useState<PolygonRegionAlgorithm>("convexHull");
 
-  const [assignmentDriverId, setAssignmentDriverId] = useState("");
-  const [assignmentVehicleId, setAssignmentVehicleId] = useState("");
-  const [assignmentFromLocal, setAssignmentFromLocal] = useState("");
-  const [selectedRouteDriverIds, setSelectedRouteDriverIds] = useState<string[]>([]);
+  const [selectedVehicleIds, setSelectedVehicleIds] = useState<string[]>([]);
+  const [routeDriverByRouteId, setRouteDriverByRouteId] = useState<
+    Record<string, string>
+  >({});
+  const [selectedMapRouteId, setSelectedMapRouteId] = useState<string | null>(
+    null,
+  );
 
   const [selectedWorkPlanId, setSelectedWorkPlanId] = useState("");
   const [selectedDistributionCenterId, setSelectedDistributionCenterId] =
     useState("");
-  const [driverShiftOrdinalByDriverId, setDriverShiftOrdinalByDriverId] = useState<
-    Record<string, string>
-  >({});
 
   const [recipientName, setRecipientName] = useState("");
   const [latitude, setLatitude] = useState("");
@@ -119,6 +150,8 @@ export function usePlanWorkflowController() {
     null,
   );
 
+  const vehiclesAtLastGenerateRef = useRef<string>("");
+
   useEffect(() => {
     try {
       localStorage.setItem(POLYGON_REGION_STORAGE_KEY, polygonAlgorithm);
@@ -137,10 +170,6 @@ export function usePlanWorkflowController() {
     }
   }, [timeZoneId]);
 
-  useEffect(() => {
-    setDriverShiftOrdinalByDriverId({});
-  }, [planId]);
-
   const orgsQuery = useQuery({
     queryKey: queryKeys.organizations,
     queryFn: () => listOrganizationsUseCase(),
@@ -148,6 +177,18 @@ export function usePlanWorkflowController() {
 
   const orgs = orgsQuery.data;
   const firstOrgId = orgs?.[0]?.id;
+
+  const persistedRoles = useAuthStore((s) => s.roles);
+  const shellTier = useMemo(
+    () => getFleetShellTier(persistedRoles),
+    [persistedRoles],
+  );
+  const isManagerOnly = useMemo(
+    () => isManagerOnlyFleetAccount(persistedRoles),
+    [persistedRoles],
+  );
+  const lockOrgPicker = shellTier !== "admin" && (orgs?.length ?? 0) <= 1;
+  const lockDcPicker = isManagerOnly;
 
   useEffect(() => {
     const orgQ = searchParams.get("organizationId");
@@ -216,18 +257,12 @@ export function usePlanWorkflowController() {
     },
   });
 
-  const driverShiftSyncKey = JSON.stringify(
-    planDetailQuery.data?.driverShifts ?? [],
+  const currentOrg = useMemo(
+    () => orgs?.find((o) => o.id === effectiveOrgId),
+    [orgs, effectiveOrgId],
   );
-  useEffect(() => {
-    const rows = planDetailQuery.data?.driverShifts;
-    if (!rows?.length) return;
-    setDriverShiftOrdinalByDriverId((prev) => {
-      const next = { ...prev };
-      for (const row of rows) next[row.driverId] = String(row.shiftOrdinal);
-      return next;
-    });
-  }, [driverShiftSyncKey]);
+  const showTimeZoneField = Boolean(currentOrg?.showPlanWizardTimeZone);
+  const allowManualStops = Boolean(currentOrg?.allowManualDeliveryStops);
 
   const driversQuery = useQuery({
     queryKey: queryKeys.drivers(effectiveOrgId || "_"),
@@ -239,12 +274,6 @@ export function usePlanWorkflowController() {
     queryKey: queryKeys.vehicles(effectiveOrgId || "_"),
     enabled: !!effectiveOrgId,
     queryFn: () => listVehiclesUseCase(effectiveOrgId),
-  });
-
-  const assignmentsQuery = useQuery({
-    queryKey: queryKeys.driverVehicleAssignments(effectiveOrgId || "_"),
-    enabled: !!effectiveOrgId,
-    queryFn: () => listDriverVehicleAssignmentsUseCase(effectiveOrgId),
   });
 
   const stopsQuery = useQuery({
@@ -284,33 +313,31 @@ export function usePlanWorkflowController() {
   }, [planId, effectiveOrgId, queryClient, snapshotQuery]);
 
   useEffect(() => {
-    if (!assignmentDriverId && driversQuery.data?.[0]?.id) {
-      setAssignmentDriverId(driversQuery.data[0].id);
-    }
-  }, [assignmentDriverId, driversQuery.data]);
+    const fleetIds = vehiclesQuery.data?.map((v) => v.id) ?? [];
+    if (!fleetIds.length) return;
+    setSelectedVehicleIds((prev) => {
+      const kept = prev.filter((id) => fleetIds.includes(id));
+      return kept.length > 0 ? kept : fleetIds;
+    });
+  }, [vehiclesQuery.data]);
 
   useEffect(() => {
-    if (!assignmentVehicleId && vehiclesQuery.data?.[0]?.id) {
-      setAssignmentVehicleId(vehiclesQuery.data[0].id);
-    }
-  }, [assignmentVehicleId, vehiclesQuery.data]);
-
-  useEffect(() => {
-    if (!assignmentFromLocal) {
-      setAssignmentFromLocal(toLocalDatetimeInput(new Date().toISOString()));
-    }
-  }, [assignmentFromLocal]);
+    const routes = snapshotQuery.data?.routes ?? [];
+    if (!routes.length) return;
+    setRouteDriverByRouteId((prev) => {
+      const next = { ...prev };
+      for (const r of routes) {
+        if (r.driverId) next[r.id] = r.driverId;
+      }
+      return next;
+    });
+  }, [snapshotQuery.data?.routes]);
 
   useEffect(() => {
     if (selectedWorkPlanId.trim()) return;
     const first = workPlansQuery.data?.[0]?.id;
     if (first) setSelectedWorkPlanId(first);
   }, [selectedWorkPlanId, workPlansQuery.data]);
-
-  useEffect(() => {
-    const ids = assignmentsQuery.data?.map((a) => a.driverId) ?? [];
-    setSelectedRouteDriverIds((prev) => prev.filter((id) => ids.includes(id)));
-  }, [assignmentsQuery.data]);
 
   const createPlanMutation = useMutation({
     mutationFn: async () => {
@@ -322,9 +349,8 @@ export function usePlanWorkflowController() {
       if (!wp) {
         throw new Error("Select a work plan template.");
       }
-      if (!tz) {
-        throw new Error("Time zone is required for shift-based fleet plans.");
-      }
+      const tzResolved =
+        tz || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
       if (!selectedDistributionCenterId.trim()) {
         throw new Error("Select a distribution center (depot) for route starts.");
       }
@@ -334,7 +360,7 @@ export function usePlanWorkflowController() {
         name,
         workPlanId: wp,
         serviceDate: planDate,
-        timeZoneId: tz,
+        timeZoneId: tzResolved,
         distributionCenterId: selectedDistributionCenterId,
       });
       if (!isAppSuccess(res) || !res.body)
@@ -353,93 +379,6 @@ export function usePlanWorkflowController() {
     },
     onError: (err: Error) =>
       toast.error(err.message || "Could not create plan."),
-  });
-
-  const assignmentAddMutation = useMutation({
-    mutationFn: async () => {
-      if (!assignmentDriverId || !assignmentVehicleId || !assignmentFromLocal) {
-        throw new Error("Driver, vehicle, and effective-from time are required.");
-      }
-      const body: AddDriverVehicleAssignmentBody = {
-        driverId: assignmentDriverId,
-        vehicleId: assignmentVehicleId,
-        effectiveFromUtc: new Date(assignmentFromLocal).toISOString(),
-        effectiveToUtc: null,
-      };
-      const res = await driverVehicleAssignmentsRepository.add(body);
-      if (!isAppSuccess(res) || !res.body)
-        throw new Error(appErrorMessage(res));
-      return res.body;
-    },
-    onSuccess: async () => {
-      toast.success("Driver assigned to vehicle.");
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.driverVehicleAssignments(effectiveOrgId),
-      });
-    },
-    onError: (err: Error) =>
-      toast.error(err.message || "Could not create assignment."),
-  });
-
-  const saveDriverShiftsMutation = useMutation({
-    mutationFn: async () => {
-      if (!planId) throw new Error("No plan selected.");
-      const assignmentDrivers =
-        assignmentsQuery.data?.map((a) => a.driverId) ?? [];
-      const targetDrivers =
-        selectedRouteDriverIds.length > 0
-          ? selectedRouteDriverIds.filter((id) =>
-              assignmentDrivers.includes(id),
-            )
-          : assignmentDrivers;
-      const assignments = targetDrivers
-        .map((driverId) => {
-          const ord = driverShiftOrdinalByDriverId[driverId];
-          return ord === undefined || ord === ""
-            ? null
-            : { driverId, shiftOrdinal: Number.parseInt(ord, 10) };
-        })
-        .filter(
-          (x): x is { driverId: string; shiftOrdinal: number } =>
-            x !== null && Number.isFinite(x.shiftOrdinal),
-        );
-      if (
-        targetDrivers.length > 0 &&
-        assignments.length !== targetDrivers.length
-      ) {
-        throw new Error(
-          "Pick a shift ordinal for every driver included in route generation.",
-        );
-      }
-      const detail = queryClient.getQueryData<PlanningWindowResponseDto>(
-        queryKeys.planningWindow(planId),
-      );
-      if (
-        (detail?.dispatchShifts?.length ?? 0) > 0 &&
-        assignments.length === 0
-      ) {
-        throw new Error(
-          "This plan uses shift bands — assign at least one driver to a shift.",
-        );
-      }
-      const res = await planningWindowsRepository.setDriverShifts(planId, {
-        assignments,
-      });
-      if (!isAppSuccess(res) || !res.body)
-        throw new Error(appErrorMessage(res));
-      return res.body;
-    },
-    onSuccess: async () => {
-      toast.success("Driver shift assignments saved.");
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.planningWindow(planId),
-      });
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.planningWindows(effectiveOrgId),
-      });
-    },
-    onError: (err: Error) =>
-      toast.error(err.message || "Could not save shift assignments."),
   });
 
   useAutoGeocodeFill({
@@ -655,26 +594,31 @@ export function usePlanWorkflowController() {
   const draftMutation = useMutation({
     mutationFn: async () => {
       if (!planId) throw new Error("No plan selected.");
-      const detail = queryClient.getQueryData<PlanningWindowResponseDto>(
-        queryKeys.planningWindow(planId),
-      );
-      const dispatchCount = detail?.dispatchShifts?.length ?? 0;
-      const driverAssignCount = detail?.driverShifts?.length ?? 0;
-      if (dispatchCount > 0 && driverAssignCount === 0) {
-        throw new Error(
-          "Save driver → shift assignments in step 2 before generating routes.",
-        );
+      if (!selectedVehicleIds.length) {
+        throw new Error("Select at least one fleet vehicle in step 2.");
       }
+      const stopList = stopsQuery.data ?? [];
+      const vehicleList = vehiclesQuery.data ?? [];
+      const capErr = validateFleetCapacity(
+        stopList,
+        vehicleList,
+        selectedVehicleIds,
+      );
+      if (capErr) throw new Error(capErr);
+
       const res = await routePlanningRepository.generateDraftRoutes({
         planningWindowId: planId,
         planningStrategy,
-        selectedDriverIds: selectedRouteDriverIds,
+        selectedVehicleIds,
       });
       if (!isAppSuccess(res) || !res.body)
         throw new Error(appErrorMessage(res));
       return res.body;
     },
     onSuccess: async (data) => {
+      vehiclesAtLastGenerateRef.current = [...selectedVehicleIds]
+        .sort()
+        .join(",");
       toast.success(
         `Routes updated: ${data.routesCreated}. ${data.messages?.join(" ") ?? ""}`,
       );
@@ -698,6 +642,15 @@ export function usePlanWorkflowController() {
     onError: (err: Error) =>
       toast.error(err.message || "Could not generate routes."),
   });
+
+  useEffect(() => {
+    if (step !== 3 || !planId || selectedVehicleIds.length === 0) return;
+    if (draftMutation.isPending) return;
+    const current = [...selectedVehicleIds].sort().join(",");
+    const last = vehiclesAtLastGenerateRef.current;
+    if (!last || last === current) return;
+    draftMutation.mutate();
+  }, [step, planId, selectedVehicleIds, draftMutation.isPending, draftMutation.mutate]);
 
   const confirmMutation = useMutation({
     mutationFn: async () => {
@@ -832,29 +785,90 @@ export function usePlanWorkflowController() {
     importMutation.mutate(file);
   };
 
-  const toggleRouteDriver = (driverId: string, checked: boolean) => {
-    setSelectedRouteDriverIds((prev) => {
-      if (checked) {
-        if (prev.includes(driverId)) return prev;
-        return [...prev, driverId];
-      }
-      return prev.filter((id) => id !== driverId);
+  const toggleVehicle = (vehicleId: string, checked: boolean) => {
+    setSelectedVehicleIds((prev) => {
+      if (checked) return prev.includes(vehicleId) ? prev : [...prev, vehicleId];
+      return prev.filter((id) => id !== vehicleId);
     });
   };
 
-  const selectAllRouteDrivers = () => {
-    const ids = assignmentsQuery.data?.map((a) => a.driverId) ?? [];
-    setSelectedRouteDriverIds(Array.from(new Set(ids)));
+  const selectAllVehicles = () => {
+    setSelectedVehicleIds(vehiclesQuery.data?.map((v) => v.id) ?? []);
   };
 
-  const clearRouteDrivers = () => setSelectedRouteDriverIds([]);
+  const clearVehicles = () => setSelectedVehicleIds([]);
 
-  const goNext = () => {
+  const assignRouteDriversMutation = useMutation({
+    mutationFn: async () => {
+      if (!planId) throw new Error("No plan selected.");
+      const routes = snapshotQuery.data?.routes ?? [];
+      const assignments = routes
+        .map((r) => {
+          const driverId = routeDriverByRouteId[r.id];
+          return driverId ? { routeId: r.id, driverId } : null;
+        })
+        .filter((x): x is { routeId: string; driverId: string } => x !== null);
+      if (routes.length > 0 && assignments.length !== routes.length) {
+        throw new Error("Assign a driver to every route before continuing.");
+      }
+      if (assignments.length === 0) return;
+      const res = await routePlanningRepository.assignRouteDrivers({
+        planningWindowId: planId,
+        assignments,
+      });
+      if (!isAppSuccess(res)) throw new Error(appErrorMessage(res));
+    },
+    onSuccess: async () => {
+      toast.success("Drivers assigned to routes.");
+      await refreshPlanningMapSnapshot();
+    },
+    onError: (err: Error) =>
+      toast.error(err.message || "Could not assign drivers."),
+  });
+
+  const goNext = async () => {
     if (step === 0) {
-      if (!effectiveOrgId || !planId) {
-        toast.error(
-          "Create a fleet plan first (organization, date, time zone, and work plan template).",
-        );
+      if (!effectiveOrgId || !planDate) {
+        toast.error("Organization and plan date are required.");
+        return;
+      }
+      if (!selectedWorkPlanId.trim()) {
+        toast.error("Select a work plan template.");
+        return;
+      }
+      if (!selectedDistributionCenterId.trim()) {
+        toast.error("Select a distribution center.");
+        return;
+      }
+      if (!planId) {
+        try {
+          await createPlanMutation.mutateAsync();
+        } catch {
+          return;
+        }
+      }
+    }
+    if (step === 1) {
+      if (!selectedVehicleIds.length) {
+        toast.error("Select at least one fleet vehicle for this plan.");
+        return;
+      }
+    }
+    if (step === 2) {
+      const capErr = validateFleetCapacity(
+        stopsQuery.data ?? [],
+        vehiclesQuery.data ?? [],
+        selectedVehicleIds,
+      );
+      if (capErr) {
+        toast.error(capErr);
+        return;
+      }
+    }
+    if (step === 5) {
+      try {
+        await assignRouteDriversMutation.mutateAsync();
+      } catch {
         return;
       }
     }
@@ -926,7 +940,6 @@ export function usePlanWorkflowController() {
       polygonAlgorithm,
       drivers: driversQuery.data ?? null,
       vehicles: vehiclesQuery.data ?? null,
-      assignments: assignmentsQuery.data ?? null,
       stops: stopsQuery.data ?? null,
       stopsLoading: stopsQuery.isLoading,
       snapshot: snapshotQuery.data ?? null,
@@ -951,16 +964,17 @@ export function usePlanWorkflowController() {
       itemDescription,
       itemQuantity,
       timeSections: TIME_SECTIONS,
-      assignmentDriverId,
-      assignmentVehicleId,
-      assignmentFromLocal,
-      selectedRouteDriverIds,
+      selectedVehicleIds,
+      routeDriverByRouteId,
+      selectedMapRouteId,
+      lockOrgPicker,
+      lockDcPicker,
+      showTimeZoneField,
+      allowManualStops,
       orgsLoading: orgsQuery.isLoading,
       driversLoading: driversQuery.isLoading,
       vehiclesLoading: vehiclesQuery.isLoading,
-      assignmentsLoading: assignmentsQuery.isLoading,
       createPlanPending: createPlanMutation.isPending,
-      assignmentPending: assignmentAddMutation.isPending,
       addStopPending: addStopMutation.isPending,
       reverseGeocodePending: reverseFromCoordsMutation.isPending,
       geocodeSearchPending: geocodeSearchMutation.isPending,
@@ -980,8 +994,7 @@ export function usePlanWorkflowController() {
       distributionCentersLoading: distributionCentersQuery.isLoading,
       selectedDistributionCenterId,
       selectedWorkPlanId,
-      driverShiftOrdinalByDriverId,
-      saveDriverShiftsPending: saveDriverShiftsMutation.isPending,
+      assignRouteDriversPending: assignRouteDriversMutation.isPending,
       stopEditBusy:
         updateDeliveryStopMutation.isPending ||
         removeVisitFromRouteMutation.isPending ||
@@ -1010,23 +1023,15 @@ export function usePlanWorkflowController() {
       setItemSku,
       setItemDescription,
       setItemQuantity,
-      setAssignmentDriverId,
-      setAssignmentVehicleId,
-      setAssignmentFromLocal,
-      toggleRouteDriver,
-      selectAllRouteDrivers,
-      clearRouteDrivers,
+      toggleVehicle,
+      selectAllVehicles,
+      clearVehicles,
+      setRouteDriver: (routeId: string, driverId: string) => {
+        setRouteDriverByRouteId((prev) => ({ ...prev, [routeId]: driverId }));
+      },
+      setSelectedMapRouteId,
       setSelectedWorkPlanId,
       setSelectedDistributionCenterId,
-      setDriverShiftOrdinal: (driverId: string, ordinal: string) => {
-        setDriverShiftOrdinalByDriverId((prev) => ({
-          ...prev,
-          [driverId]: ordinal,
-        }));
-      },
-      saveDriverShifts: () => saveDriverShiftsMutation.mutate(),
-      createPlan: () => createPlanMutation.mutate(),
-      addAssignment: () => assignmentAddMutation.mutate(),
       addStop: () => addStopMutation.mutate(),
       lookupAddressFromCoords: () => reverseFromCoordsMutation.mutate(),
       lookupCoordinatesFromAddress: () => geocodeSearchMutation.mutate(),

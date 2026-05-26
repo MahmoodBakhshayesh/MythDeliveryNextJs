@@ -15,6 +15,8 @@ export type OrganizationResponse = {
   id: string;
   name: string;
   description?: string | null;
+  allowManualDeliveryStops?: boolean;
+  showPlanWizardTimeZone?: boolean;
 };
 
 /** Admin user directory row from GET /api/users */

@@ -39,7 +39,9 @@ import {
   type RouteStopEditMapContext,
 } from "@/features/map/domain/planning-map.types";
 import { DeliveryStopEditDialog } from "@/features/map/components/delivery-stop-edit-dialog";
+import { PlanningMapDraftToolbar } from "@/features/map/components/planning-map-draft-toolbar";
 import { PlanningMapSidebar } from "@/features/map/components/planning-map-sidebar";
+import { RouteDriverAssignmentList } from "@/features/plan-workflow/components/route-driver-assignment-list";
 import { deliveryStopToUpdateBody } from "@/features/map/lib/delivery-stop-update-body";
 import { cn } from "@/lib/utils";
 
@@ -80,10 +82,11 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
 
   const stepTitles = [
     t("steps.planDate"),
-    t("steps.drivers"),
+    t("steps.vehicles"),
     t("steps.deliveries"),
     t("steps.preview"),
     t("steps.confirm"),
+    t("steps.assignDrivers"),
     t("steps.overview"),
   ];
 
@@ -101,7 +104,6 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
     polygonAlgorithm,
     drivers,
     vehicles,
-    assignments,
     stops,
     stopsLoading,
     snapshot,
@@ -127,10 +129,13 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
     itemDescription,
     itemQuantity,
     timeSections,
-    assignmentDriverId,
-    assignmentVehicleId,
-    assignmentFromLocal,
-    selectedRouteDriverIds,
+    selectedVehicleIds,
+    routeDriverByRouteId,
+    selectedMapRouteId,
+    lockOrgPicker,
+    lockDcPicker,
+    showTimeZoneField,
+    allowManualStops,
     planDetail,
     planDetailLoading,
     workPlans,
@@ -139,14 +144,11 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
     distributionCenters,
     distributionCentersLoading,
     selectedDistributionCenterId,
-    driverShiftOrdinalByDriverId,
-    saveDriverShiftsPending,
+    assignRouteDriversPending,
     orgsLoading,
     driversLoading,
     vehiclesLoading,
-    assignmentsLoading,
     createPlanPending,
-    assignmentPending,
     addStopPending,
     reverseGeocodePending,
     geocodeSearchPending,
@@ -173,12 +175,29 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
     setMapSelectedDeliveryStopId(null);
     setRepositioningDeliveryStopId(null);
     setDeliveryStopEditorId(null);
+    actions.setSelectedMapRouteId(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset map pickers when plan changes
   }, [planId]);
+
+  const overlayRouteKey = (overlay?.routes ?? [])
+    .map((r) => r.routeId)
+    .sort()
+    .join(",");
+  useEffect(() => {
+    actions.setSelectedMapRouteId(null);
+    setMapSelectedDeliveryStopId(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset when routes regenerate
+  }, [overlayRouteKey]);
 
   const routeEditActive =
     Boolean(planId) &&
     Boolean(snapshot?.routes?.length) &&
     !planDetail?.isConfirmed;
+
+  const fleetVehicleIds = useMemo(
+    () => vehicles?.filter((v) => v.isActive).map((v) => v.id) ?? [],
+    [vehicles],
+  );
 
   const routeStopEditContext: RouteStopEditMapContext | null =
     routeEditActive && snapshot?.routes && mapStops != null && planId
@@ -207,27 +226,6 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
           stopEditBusy,
         }
       : null;
-
-  /** Step 2 supervisor driver–vehicle assignments, plus any route-only drivers for this plan. */
-  const routeEditPlanDrivers = useMemo(() => {
-    const byId = new Map<string, string>();
-    for (const a of assignments ?? []) {
-      byId.set(
-        a.driverId,
-        a.driverDisplayName?.trim() ||
-          drivers?.find((d) => d.id === a.driverId)?.displayName ||
-          "Driver",
-      );
-    }
-    for (const r of snapshot?.routes ?? []) {
-      if (r.status === 4) continue;
-      if (!byId.has(r.driverId))
-        byId.set(r.driverId, r.driverName?.trim() || "Driver");
-    }
-    return [...byId.entries()]
-      .map(([driverId, displayName]) => ({ driverId, displayName }))
-      .sort((a, b) => a.displayName.localeCompare(b.displayName));
-  }, [assignments, snapshot?.routes, drivers]);
 
   return (
     <div className="space-y-8">
@@ -278,29 +276,41 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
         <CardContent className="space-y-6">
           {step === 0 ? (
             <div className="mx-auto max-w-lg space-y-4">
-                <div className="space-y-2">
-                  <Label>{tc("organization")}</Label>
-                  <Select
-                    value={selectedOrgId}
-                    onValueChange={(v) => actions.setOrgId(v)}
-                    disabled={orgsLoading || !organizations?.length}
-                    items={(organizations ?? []).map((o) => ({
-                      value: o.id,
-                      label: o.name,
-                    }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={tc("selectOrganization")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {organizations?.map((o) => (
-                        <SelectItem key={o.id} value={o.id}>
-                          {o.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {lockOrgPicker ? (
+                  organizations?.[0] ? (
+                    <p className="text-muted-foreground text-sm">
+                      {tc("organization")}:{" "}
+                      <span className="text-foreground font-medium">
+                        {organizations.find((o) => o.id === selectedOrgId)?.name ??
+                          organizations[0].name}
+                      </span>
+                    </p>
+                  ) : null
+                ) : (
+                  <div className="space-y-2">
+                    <Label>{tc("organization")}</Label>
+                    <Select
+                      value={selectedOrgId}
+                      onValueChange={(v) => actions.setOrgId(v)}
+                      disabled={orgsLoading || !organizations?.length}
+                      items={(organizations ?? []).map((o) => ({
+                        value: o.id,
+                        label: o.name,
+                      }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={tc("selectOrganization")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {organizations?.map((o) => (
+                          <SelectItem key={o.id} value={o.id}>
+                            {o.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="wf-plan-date">{t("planDate")}</Label>
                   <Input
@@ -322,15 +332,17 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
                     placeholder={t("planNamePlaceholder")}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="wf-tz">{t("timeZoneRequired")}</Label>
-                  <Input
-                    id="wf-tz"
-                    value={timeZoneId}
-                    onChange={(e) => actions.setTimeZoneId(e.target.value)}
-                    placeholder={t("timeZonePlaceholder")}
-                  />
-                </div>
+                {showTimeZoneField ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="wf-tz">{t("timeZoneRequired")}</Label>
+                    <Input
+                      id="wf-tz"
+                      value={timeZoneId}
+                      onChange={(e) => actions.setTimeZoneId(e.target.value)}
+                      placeholder={t("timeZonePlaceholder")}
+                    />
+                  </div>
+                ) : null}
                 <div className="space-y-2 rounded-md border bg-muted/30 p-3">
                   <Label>{t("workPlanPick")}</Label>
                   <Select
@@ -362,62 +374,60 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
                     </Link>
                   </p>
                 </div>
-                <div className="space-y-2 rounded-md border bg-muted/30 p-3">
-                  <Label>{t("storagePick")}</Label>
-                  <Select
-                    value={selectedDistributionCenterId}
-                    onValueChange={(v) =>
-                      actions.setSelectedDistributionCenterId(v ?? "")
-                    }
-                    disabled={
-                      distributionCentersLoading ||
-                      !(distributionCenters?.length)
-                    }
-                    items={(distributionCenters ?? []).map((s) => ({
-                      value: s.id,
-                      label: s.name,
-                    }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={t("storagePlaceholder")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(distributionCenters ?? []).map((s) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {!distributionCentersLoading &&
-                  !(distributionCenters?.length) ? (
-                    <p className="text-destructive text-xs">{t("noStorages")}</p>
-                  ) : null}
-                  <p className="text-muted-foreground text-xs">
-                    {t("storageHelp")}{" "}
-                    <Link
-                      href="/distribution-centers"
-                      className="text-primary underline"
+                {lockDcPicker ? (
+                  distributionCenters?.[0] ? (
+                    <p className="text-muted-foreground rounded-md border bg-muted/30 p-3 text-sm">
+                      {t("storagePick")}:{" "}
+                      <span className="text-foreground font-medium">
+                        {distributionCenters.find(
+                          (s) => s.id === selectedDistributionCenterId,
+                        )?.name ?? distributionCenters[0].name}
+                      </span>
+                    </p>
+                  ) : null
+                ) : (
+                  <div className="space-y-2 rounded-md border bg-muted/30 p-3">
+                    <Label>{t("storagePick")}</Label>
+                    <Select
+                      value={selectedDistributionCenterId}
+                      onValueChange={(v) =>
+                        actions.setSelectedDistributionCenterId(v ?? "")
+                      }
+                      disabled={
+                        distributionCentersLoading ||
+                        !(distributionCenters?.length)
+                      }
+                      items={(distributionCenters ?? []).map((s) => ({
+                        value: s.id,
+                        label: s.name,
+                      }))}
                     >
-                      {t("manageStorages")}
-                    </Link>
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  onClick={() => actions.createPlan()}
-                  disabled={
-                    createPlanPending ||
-                    !selectedOrgId ||
-                    !planDate ||
-                    !selectedWorkPlanId.trim() ||
-                    !timeZoneId.trim() ||
-                    !selectedDistributionCenterId.trim() ||
-                    distributionCentersLoading
-                  }
-                >
-                  {createPlanPending ? t("creatingPlan") : t("createPlan")}
-                </Button>
+                      <SelectTrigger>
+                        <SelectValue placeholder={t("storagePlaceholder")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(distributionCenters ?? []).map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {!distributionCentersLoading &&
+                    !(distributionCenters?.length) ? (
+                      <p className="text-destructive text-xs">{t("noStorages")}</p>
+                    ) : null}
+                    <p className="text-muted-foreground text-xs">
+                      {t("storageHelp")}{" "}
+                      <Link
+                        href="/distribution-centers"
+                        className="text-primary underline"
+                      >
+                        {t("manageStorages")}
+                      </Link>
+                    </p>
+                  </div>
+                )}
                 {planId ? (
                   <div className="space-y-2 pt-2">
                     <Badge variant="outline">
@@ -439,219 +449,60 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
           {step === 1 ? (
             <div className="space-y-6">
               <p className="text-muted-foreground text-sm">
-                {t("driversIntro")}{" "}
-                <Link href="/drivers" className="text-primary underline">
-                  {t("openDrivers")}
-                </Link>{" "}
-                ·{" "}
+                {t("vehiclesIntro")}{" "}
                 <Link href="/fleet" className="text-primary underline">
                   {t("openFleet")}
                 </Link>
               </p>
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="space-y-2">
-                  <Label>{t("driver")}</Label>
-                  <Select
-                    value={assignmentDriverId}
-                    onValueChange={(v) => actions.setAssignmentDriverId(v ?? "")}
-                    disabled={driversLoading || !drivers?.length}
-                    items={(drivers ?? []).map((d) => ({
-                      value: d.id,
-                      label: d.displayName ?? d.id,
-                    }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={t("selectDriver")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {drivers?.map((d) => (
-                        <SelectItem key={d.id} value={d.id}>
-                          {d.displayName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>{t("vehicle")}</Label>
-                  <Select
-                    value={assignmentVehicleId}
-                    onValueChange={(v) =>
-                      actions.setAssignmentVehicleId(v ?? "")
-                    }
-                    disabled={vehiclesLoading || !vehicles?.length}
-                    items={(vehicles ?? []).map((v) => ({
-                      value: v.id,
-                      label: v.name ?? v.id,
-                    }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={t("selectVehicle")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {vehicles?.map((v) => (
-                        <SelectItem key={v.id} value={v.id}>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => actions.selectAllVehicles()}
+                >
+                  {t("selectAll")}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => actions.clearVehicles()}
+                >
+                  {t("clearAll")}
+                </Button>
+              </div>
+              {vehiclesLoading ? (
+                <Skeleton className="h-24 w-full" />
+              ) : vehicles?.length ? (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {vehicles.map((v) => {
+                    const checked = selectedVehicleIds.includes(v.id);
+                    return (
+                      <label
+                        key={v.id}
+                        className="flex cursor-pointer items-center justify-between rounded-md border px-3 py-2 text-sm"
+                      >
+                        <span className="truncate">
                           {v.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>{t("effectiveFrom")}</Label>
-                  <Input
-                    type="datetime-local"
-                    value={assignmentFromLocal}
-                    onChange={(e) =>
-                      actions.setAssignmentFromLocal(e.target.value)
-                    }
-                  />
-                </div>
-              </div>
-              <Button
-                type="button"
-                onClick={() => actions.addAssignment()}
-                disabled={
-                  assignmentPending ||
-                  !assignmentDriverId ||
-                  !assignmentVehicleId
-                }
-              >
-                {assignmentPending ? t("assigning") : t("assignVehicle")}
-              </Button>
-              <Separator />
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <h4 className="font-medium">{t("selectedDriversForPlan")}</h4>
-                  <div className="flex gap-2">
-                    <Button type="button" size="sm" variant="outline" onClick={() => actions.selectAllRouteDrivers()}>
-                      {t("selectAll")}
-                    </Button>
-                    <Button type="button" size="sm" variant="outline" onClick={() => actions.clearRouteDrivers()}>
-                      {t("clearAll")}
-                    </Button>
-                  </div>
-                </div>
-                {assignmentsLoading ? (
-                  <Skeleton className="h-20 w-full" />
-                ) : assignments?.length ? (
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {assignments.map((a) => {
-                      const checked = selectedRouteDriverIds.includes(a.driverId);
-                      return (
-                        <label
-                          key={`pick-${a.id}`}
-                          className="flex cursor-pointer items-center justify-between rounded-md border px-3 py-2 text-sm"
-                        >
-                          <span className="truncate">
-                            {(a.driverDisplayName ?? "Driver")} → {(a.vehicleName ?? "Vehicle")}
+                          <span className="text-muted-foreground ms-2 text-xs">
+                            {v.maxWeightKg} kg · {v.maxVolumeM3} m³
                           </span>
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={(e) => actions.toggleRouteDriver(a.driverId, e.target.checked)}
-                          />
-                        </label>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground text-sm">{t("noAssignments")}</p>
-                )}
-              </div>
-              {(planDetail?.dispatchShifts?.length ?? 0) > 0 ? (
-                <>
-                  <Separator />
-                  <div className="space-y-3">
-                    <div>
-                      <h4 className="font-medium">{t("shiftAssignmentsTitle")}</h4>
-                      <p className="text-muted-foreground mt-1 text-xs">
-                        {t("shiftAssignmentsHint")}
-                      </p>
-                    </div>
-                    {planDetailLoading ? (
-                      <Skeleton className="h-24 w-full" />
-                    ) : (
-                      <>
-                        <ul className="text-muted-foreground space-y-1 text-xs">
-                          {(planDetail?.dispatchShifts ?? []).map((s) => (
-                            <li key={s.id}>
-                              {t("dispatchShiftRow", {
-                                ordinal: s.ordinal,
-                                start: new Date(s.startsAtUtc).toLocaleString(),
-                                end: new Date(s.endsAtUtc).toLocaleString(),
-                              })}
-                            </li>
-                          ))}
-                        </ul>
-                        <div className="grid gap-2">
-                          {(assignments ?? []).map((a) => (
-                            <div
-                              key={`shift-${a.id}`}
-                              className="flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-sm"
-                            >
-                              <span className="min-w-[140px] truncate font-medium">
-                                {a.driverDisplayName ?? "—"}
-                              </span>
-                              <select
-                                className="border-input bg-background h-9 min-w-[200px] rounded-md border px-2 text-sm"
-                                value={driverShiftOrdinalByDriverId[a.driverId] ?? ""}
-                                onChange={(e) =>
-                                  actions.setDriverShiftOrdinal(a.driverId, e.target.value)
-                                }
-                              >
-                                <option value="">{t("shiftPickPlaceholder")}</option>
-                                {(planDetail?.dispatchShifts ?? []).map((s) => (
-                                  <option key={s.ordinal} value={String(s.ordinal)}>
-                                    #{s.ordinal}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          ))}
-                        </div>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          disabled={
-                            saveDriverShiftsPending ||
-                            !planId ||
-                            Boolean(planDetail?.isConfirmed)
+                        </span>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) =>
+                            actions.toggleVehicle(v.id, e.target.checked)
                           }
-                          onClick={() => actions.saveDriverShifts()}
-                        >
-                          {saveDriverShiftsPending
-                            ? t("savingShiftAssignments")
-                            : t("saveShiftAssignments")}
-                        </Button>
-                        {planDetail?.isConfirmed ? (
-                          <p className="text-muted-foreground text-xs">{t("shiftAssignmentsLocked")}</p>
-                        ) : null}
-                      </>
-                    )}
-                  </div>
-                </>
-              ) : null}
-              <Separator />
-              <div>
-                <h4 className="mb-2 font-medium">{t("currentAssignments")}</h4>
-                {assignmentsLoading ? (
-                  <Skeleton className="h-20 w-full" />
-                ) : assignments?.length ? (
-                  <ul className="text-muted-foreground space-y-1 text-sm">
-                    {assignments.map((a) => (
-                      <li key={a.id}>
-                        {a.driverDisplayName ?? "—"} →{" "}
-                        {a.vehicleName ?? "—"}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-muted-foreground text-sm">
-                    {t("noAssignments")}
-                  </p>
-                )}
-              </div>
+                        />
+                      </label>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-sm">{t("noFleetVehicles")}</p>
+              )}
             </div>
           ) : null}
 
@@ -688,6 +539,8 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
                   {lastImport.importedRows} / {lastImport.totalRows}
                 </p>
               ) : null}
+              {allowManualStops ? (
+                <>
               <Separator />
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
@@ -861,6 +714,10 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
               >
                 {addStopPending ? tc("creating") : td("addStop")}
               </Button>
+                </>
+              ) : (
+                <p className="text-muted-foreground text-sm">{t("manualStopsDisabled")}</p>
+              )}
               <Separator />
               <div>
                 <h4 className="mb-2 font-medium">{t("stopsForPlan")}</h4>
@@ -880,79 +737,30 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
           ) : null}
 
           {step === 3 ? (
-            <div className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>{td("planningStrategy")}</Label>
-                  <Select
-                    value={planningStrategy}
-                    onValueChange={(v) =>
-                      actions.setPlanningStrategy(
-                        (v as typeof planningStrategy) ?? "SpatialCell",
-                      )
-                    }
-                    items={planningStrategies.map((s) => ({
-                      value: s,
-                      label: td(`planningStrategies.${s}`),
-                    }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {planningStrategies.map((s) => (
-                        <SelectItem key={s} value={s}>
-                          {td(`planningStrategies.${s}`)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>{tm("regionAlgorithm")}</Label>
-                  <Select
-                    value={polygonAlgorithm}
-                    onValueChange={(v) =>
-                      actions.setPolygonAlgorithm(
-                        v as PolygonRegionAlgorithm,
-                      )
-                    }
-                    items={POLYGON_REGION_OPTIONS.map((opt) => ({
-                      value: opt.value,
-                      label: tm(`polygon.${opt.value}.label`),
-                    }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {POLYGON_REGION_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {tm(`polygon.${opt.value}.label`)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  onClick={() => actions.generateDraftRoutes()}
-                  disabled={
-                    draftPending ||
-                    planDetail?.isConfirmed ||
-                    selectedRouteDriverIds.length === 0
-                  }
-                >
-                  {draftPending ? td("generatingRoutes") : td("generateDraftRoutes")}
-                </Button>
-              </div>
-              {planDetail?.isConfirmed ? (
-                <p className="text-amber-600 text-sm">{t("lockedRegenerateHint")}</p>
-              ) : null}
-              <div className="grid min-w-0 gap-4 xl:grid-cols-[1fr_minmax(280px,360px)]">
-                <div className="relative h-[min(70vh,560px)] min-w-0 w-full overflow-hidden rounded-lg bg-muted">
+            <div className="flex min-h-[min(82vh,760px)] flex-col gap-2">
+              <PlanningMapDraftToolbar
+                planningStrategy={planningStrategy}
+                planningStrategies={planningStrategies}
+                onPlanningStrategyChange={(v) =>
+                  actions.setPlanningStrategy(
+                    (v as typeof planningStrategy) ?? "SpatialCell",
+                  )
+                }
+                polygonAlgorithm={polygonAlgorithm}
+                onPolygonAlgorithmChange={(v) => actions.setPolygonAlgorithm(v)}
+                onGenerateDraftRoutes={() => actions.generateDraftRoutes()}
+                generateDisabled={
+                  draftPending ||
+                  Boolean(planDetail?.isConfirmed) ||
+                  selectedVehicleIds.length === 0
+                }
+                generatePending={draftPending}
+                lockedHint={
+                  planDetail?.isConfirmed ? t("lockedRegenerateHint") : null
+                }
+              />
+              <div className="grid min-h-0 flex-1 gap-3 xl:grid-cols-[1fr_minmax(300px,400px)]">
+                <div className="relative min-h-[min(50vh,420px)] min-w-0 flex-1 overflow-hidden rounded-lg bg-muted xl:min-h-0">
                   {snapshotLoading && (
                     <Skeleton className="absolute inset-0 z-[400] rounded-lg" />
                   )}
@@ -961,6 +769,9 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
                       key={planningMapLeafletKey(overlay)}
                       overlay={overlay}
                       onMapClick={() => {}}
+                      polygonPickMode
+                      selectedRouteId={selectedMapRouteId}
+                      onRouteSelect={actions.setSelectedMapRouteId}
                       selectedDeliveryStopId={
                         routeEditActive ? mapSelectedDeliveryStopId : undefined
                       }
@@ -980,14 +791,18 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
                     </p>
                   ) : null}
                 </div>
-                <div className="min-w-0">
+                <div className="flex min-h-0 min-w-0 flex-col xl:min-h-0">
                   <PlanningMapSidebar
+                    fillHeight
                     overlay={overlay}
                     polygonAlgorithm={polygonAlgorithm}
                     mapStops={mapStops}
                     routes={snapshot?.routes ?? undefined}
-                    planDrivers={routeEditPlanDrivers}
-                    driversIncludedInRouteGeneration={selectedRouteDriverIds}
+                    fleetVehicleIds={fleetVehicleIds}
+                    fleetVehicles={vehicles ?? undefined}
+                    planVehicleIds={selectedVehicleIds}
+                    highlightedRouteId={selectedMapRouteId}
+                    onHighlightRoute={actions.setSelectedMapRouteId}
                     canShowMap={Boolean(overlay)}
                     routeEditActive={routeEditActive}
                     isConfirmed={Boolean(planDetail?.isConfirmed)}
@@ -1001,80 +816,37 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
                   />
                 </div>
               </div>
-              <p className="text-muted-foreground text-xs">{t("previewHelp")}</p>
-              <p className="text-muted-foreground text-xs">{t("routeEditHint")}</p>
+              <p className="text-muted-foreground shrink-0 text-xs leading-snug">
+                {t("previewHelp")} {t("polygonPickHint")} {t("routeEditHint")}
+              </p>
             </div>
           ) : null}
 
           {step === 4 ? (
-            <div className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>{td("planningStrategy")}</Label>
-                  <Select
-                    value={planningStrategy}
-                    onValueChange={(v) =>
-                      actions.setPlanningStrategy(
-                        (v as typeof planningStrategy) ?? "SpatialCell",
-                      )
-                    }
-                    items={planningStrategies.map((s) => ({
-                      value: s,
-                      label: td(`planningStrategies.${s}`),
-                    }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {planningStrategies.map((s) => (
-                        <SelectItem key={s} value={s}>
-                          {td(`planningStrategies.${s}`)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>{tm("regionAlgorithm")}</Label>
-                  <Select
-                    value={polygonAlgorithm}
-                    onValueChange={(v) =>
-                      actions.setPolygonAlgorithm(v as PolygonRegionAlgorithm)
-                    }
-                    items={POLYGON_REGION_OPTIONS.map((opt) => ({
-                      value: opt.value,
-                      label: tm(`polygon.${opt.value}.label`),
-                    }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {POLYGON_REGION_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {tm(`polygon.${opt.value}.label`)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  onClick={() => actions.generateDraftRoutes()}
-                  disabled={
-                    draftPending ||
-                    planDetail?.isConfirmed ||
-                    selectedRouteDriverIds.length === 0
-                  }
-                >
-                  {draftPending ? td("generatingRoutes") : td("generateDraftRoutes")}
-                </Button>
-              </div>
-              <div className="grid min-w-0 gap-4 xl:grid-cols-[1fr_minmax(280px,360px)]">
-                <div className="relative h-[min(70vh,560px)] min-w-0 w-full overflow-hidden rounded-lg bg-muted">
+            <div className="flex min-h-[min(82vh,760px)] flex-col gap-2">
+              <PlanningMapDraftToolbar
+                planningStrategy={planningStrategy}
+                planningStrategies={planningStrategies}
+                onPlanningStrategyChange={(v) =>
+                  actions.setPlanningStrategy(
+                    (v as typeof planningStrategy) ?? "SpatialCell",
+                  )
+                }
+                polygonAlgorithm={polygonAlgorithm}
+                onPolygonAlgorithmChange={(v) => actions.setPolygonAlgorithm(v)}
+                onGenerateDraftRoutes={() => actions.generateDraftRoutes()}
+                generateDisabled={
+                  draftPending ||
+                  Boolean(planDetail?.isConfirmed) ||
+                  selectedVehicleIds.length === 0
+                }
+                generatePending={draftPending}
+                lockedHint={
+                  planDetail?.isConfirmed ? t("lockedRegenerateHint") : null
+                }
+              />
+              <div className="grid min-h-0 flex-1 gap-3 xl:grid-cols-[1fr_minmax(300px,400px)]">
+                <div className="relative min-h-[min(50vh,420px)] min-w-0 flex-1 overflow-hidden rounded-lg bg-muted xl:min-h-0">
                   {snapshotLoading && (
                     <Skeleton className="absolute inset-0 z-[400] rounded-lg" />
                   )}
@@ -1083,6 +855,9 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
                       key={planningMapLeafletKey(overlay)}
                       overlay={overlay}
                       onMapClick={() => {}}
+                      polygonPickMode
+                      selectedRouteId={selectedMapRouteId}
+                      onRouteSelect={actions.setSelectedMapRouteId}
                       selectedDeliveryStopId={
                         routeEditActive ? mapSelectedDeliveryStopId : undefined
                       }
@@ -1102,14 +877,18 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
                     </p>
                   ) : null}
                 </div>
-                <div className="min-w-0">
+                <div className="flex min-h-0 min-w-0 flex-col xl:min-h-0">
                   <PlanningMapSidebar
+                    fillHeight
                     overlay={overlay}
                     polygonAlgorithm={polygonAlgorithm}
                     mapStops={mapStops}
                     routes={snapshot?.routes ?? undefined}
-                    planDrivers={routeEditPlanDrivers}
-                    driversIncludedInRouteGeneration={selectedRouteDriverIds}
+                    fleetVehicleIds={fleetVehicleIds}
+                    fleetVehicles={vehicles ?? undefined}
+                    planVehicleIds={selectedVehicleIds}
+                    highlightedRouteId={selectedMapRouteId}
+                    onHighlightRoute={actions.setSelectedMapRouteId}
                     canShowMap={Boolean(overlay)}
                     routeEditActive={routeEditActive}
                     isConfirmed={Boolean(planDetail?.isConfirmed)}
@@ -1123,8 +902,9 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
                   />
                 </div>
               </div>
-              <p className="text-muted-foreground text-xs">{t("confirmMapHint")}</p>
-              <p className="text-muted-foreground text-xs">{t("routeEditHint")}</p>
+              <p className="text-muted-foreground shrink-0 text-xs leading-snug">
+                {t("confirmMapHint")} {t("polygonPickHint")} {t("routeEditHint")}
+              </p>
               {planDetail?.isConfirmed ? (
                 <>
                   <Badge>{t("statusConfirmed")}</Badge>
@@ -1158,6 +938,51 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
           ) : null}
 
           {step === 5 ? (
+            <div className="space-y-6">
+              <p className="text-muted-foreground text-sm">{t("assignDriversIntro")}</p>
+              <div className="grid min-w-0 gap-4 xl:grid-cols-[1fr_minmax(300px,420px)]">
+                <div className="min-w-0 space-y-3">
+                  <RouteDriverAssignmentList
+                    routes={snapshot?.routes}
+                    overlay={overlay}
+                    mapStops={mapStops}
+                    drivers={drivers}
+                    driversLoading={driversLoading}
+                    routeDriverByRouteId={routeDriverByRouteId}
+                    selectedMapRouteId={selectedMapRouteId}
+                    onRouteSelect={actions.setSelectedMapRouteId}
+                    onRouteDriverChange={actions.setRouteDriver}
+                    loading={snapshotLoading}
+                  />
+                  {assignRouteDriversPending ? (
+                    <p className="text-muted-foreground text-xs">
+                      {t("savingDriverAssignments")}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="relative h-[min(50vh,400px)] min-w-0 w-full overflow-hidden rounded-lg bg-muted xl:sticky xl:top-4 xl:h-[min(70vh,560px)]">
+                  {snapshotLoading ? (
+                    <Skeleton className="absolute inset-0 rounded-lg" />
+                  ) : overlay ? (
+                    <PlanningMapLeaflet
+                      key={planningMapLeafletKey(overlay)}
+                      overlay={overlay}
+                      onMapClick={() => {}}
+                      polygonPickMode
+                      selectedRouteId={selectedMapRouteId}
+                      onRouteSelect={actions.setSelectedMapRouteId}
+                    />
+                  ) : (
+                    <div className="text-muted-foreground flex size-full items-center justify-center p-4 text-center text-sm">
+                      {t("noRoutesForAssignment")}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {step === 6 ? (
             <div className="space-y-6">
               {snapshotLoading ? (
                 <Skeleton className="h-24 w-full" />
@@ -1233,10 +1058,16 @@ export function PlanWorkflowView({ viewState, actions }: PlanWorkflowViewModel) 
         </Button>
         <Button
           type="button"
-          onClick={() => actions.goNext()}
-          disabled={step >= stepsTotal - 1}
+          onClick={() => void actions.goNext()}
+          disabled={step >= stepsTotal - 1 || createPlanPending || assignRouteDriversPending}
         >
-          {t("next")}
+          {step === 0 && createPlanPending
+            ? t("creatingPlan")
+            : step === 5 && assignRouteDriversPending
+              ? t("savingDriverAssignments")
+              : step === 0 && !planId
+                ? t("createPlanAndNext")
+                : t("next")}
           <ChevronRight className="ms-1 size-4" />
         </Button>
       </div>

@@ -1,0 +1,49 @@
+---
+description: Feature module layout under src/features
+alwaysApply: true
+---
+
+# Feature modules
+
+One folder per business area: **`src/features/<feature>/`**.
+
+## Standard layout
+
+```text
+src/features/<feature>/
+  domain/              # types, zod schemas, pure helpers
+  repositories/        # *Repository — apiJson only
+  usecases/            # *UseCase — one file per operation
+  controllers/           # use*Controller.ts hooks
+  views/               # *Page.view.tsx — UI only
+  components/          # feature-specific (maps, dialogs)
+  lib/                 # optional pure utils (e.g. map geometry)
+```
+
+## Naming
+
+- Use cases: `list-vehicles.usecase.ts`, `add-vehicle.usecase.ts`
+- Controllers: `fleet-page.controller.ts` → `useFleetPageController`
+- Views: `fleet-page.view.tsx` → `FleetPageView`
+- Repositories: `vehicles.repository.ts` → `vehiclesRepository` export
+
+## Cross-feature calls
+
+- Prefer **use case → repository** in the owning feature.
+- If feature B needs feature A data, call **A’s use case** from B’s controller — not B’s repository reaching into A’s API paths ad hoc.
+- Shared types live in **domain** or `src/types/` when used by 3+ features.
+
+## Feature-specific UI
+
+- Heavy UI (maps, charts) stays in `features/<feature>/components/`.
+- Do not put feature business logic in `src/components/ui/`.
+
+## New feature checklist
+
+1. Types in `domain/`
+2. Repository methods
+3. Use cases per API operation
+4. Controller hook + view model type
+5. View component
+6. `app/.../page.tsx`
+7. `queryKeys` entries in `@/lib/query-keys`

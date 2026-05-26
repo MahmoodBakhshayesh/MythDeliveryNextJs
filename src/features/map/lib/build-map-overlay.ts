@@ -7,7 +7,7 @@ import type {
   StopPinModel,
 } from "@/features/map/domain/planning-map.types";
 import { applyNonOverlappingHullClip } from "@/features/map/lib/clip-partition-hulls";
-import { colorForDriverId } from "@/features/map/lib/driver-color";
+import { colorForMapRoute } from "@/features/map/lib/driver-color";
 import { computeRouteRegionRing } from "@/features/map/lib/polygon-region";
 
 const UNASSIGNED_STOP_COLOR = "hsl(220 12% 52%)";
@@ -20,8 +20,9 @@ export function buildMapOverlay(
   const stopColorById = new Map<string, string>();
   const stopSequenceById = new Map<string, number>();
 
-  const routeLayersBuilt: RouteLayerModel[] = routes.map((route) => {
-    const color = colorForDriverId(route.driverId);
+  const routeCount = routes.length;
+  const routeLayersBuilt: RouteLayerModel[] = routes.map((route, index) => {
+    const color = colorForMapRoute(route.id, index, routeCount);
     const sorted = [...route.stops].sort((a, b) => a.sequence - b.sequence);
     for (const rs of sorted) {
       stopColorById.set(rs.deliveryStopId, color);
@@ -38,7 +39,10 @@ export function buildMapOverlay(
     return {
       routeId: route.id,
       driverId: route.driverId,
-      driverName: route.driverName?.trim() || "Driver",
+      driverName:
+        route.driverName?.trim() ||
+        route.vehicleName?.trim() ||
+        "Route",
       color,
       polyline,
       hull,

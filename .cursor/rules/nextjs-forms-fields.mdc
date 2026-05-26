@@ -1,0 +1,46 @@
+---
+description: Forms — react-hook-form, zod, shared field patterns
+globs: src/features/**/*,src/components/**/*
+alwaysApply: false
+---
+
+# Forms and validation
+
+## Stack
+
+- **`react-hook-form`** + **`zod`** + **`@hookform/resolvers`** for non-trivial forms.
+- Simple one-off dialogs: controlled state in controller is OK (see fleet add-vehicle).
+
+## Where logic lives
+
+| Concern | Layer |
+|---------|--------|
+| Field values, submit | Controller hook or RHF in view |
+| API payload shape | `domain` types + zod schema |
+| HTTP | Repository → use case |
+| Success/error toast | Controller `onSuccess` / `onError` |
+
+## Reusable field chrome (brewlab-inspired)
+
+When the same field look is repeated across features:
+
+1. Add **`FormFieldShell`** or **`AppFormInput`** under `src/components/forms/`.
+2. Props: `label`, `error`, `required`, consistent height/radius/border tokens.
+3. Features use the wrapper around shadcn `Input` / `Select` — not custom `<input>` per screen.
+
+Use unified mobile-like fields only when product/design requires parity; otherwise shadcn defaults are fine.
+
+## Dialogs
+
+- `Dialog` + `DialogFooter` from ui; primary submit triggers mutation from controller actions.
+- Disable submit while `mutation.isPending`; show validation errors inline.
+
+## Numbers and locales
+
+- Parse numbers in use case or before submit; don’t send raw strings to API.
+- Display dates/times with explicit locale strategy (Jalali/Gregorian helpers in `lib/` if needed).
+
+## Accessibility
+
+- Pair `Label` with `htmlFor` / `id`.
+- Icon-only buttons need `aria-label` (see mobile menu pattern).

@@ -20,6 +20,8 @@ export function useOrganizationsListController() {
   const [editOrgId, setEditOrgId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
+  const [editAllowManualStops, setEditAllowManualStops] = useState(false);
+  const [editShowPlanTimeZone, setEditShowPlanTimeZone] = useState(false);
 
   const query = useQuery({
     queryKey: queryKeys.organizations,
@@ -43,10 +45,14 @@ export function useOrganizationsListController() {
       id: string;
       name: string;
       description: string | null;
+      allowManualDeliveryStops: boolean;
+      showPlanWizardTimeZone: boolean;
     }) =>
       updateOrganizationUseCase(args.id, {
         name: args.name,
         description: args.description,
+        allowManualDeliveryStops: args.allowManualDeliveryStops,
+        showPlanWizardTimeZone: args.showPlanWizardTimeZone,
       }),
     onSuccess: async () => {
       toast.success("Organization updated.");
@@ -62,6 +68,8 @@ export function useOrganizationsListController() {
     setEditOrgId(org.id);
     setEditName(org.name);
     setEditDescription(org.description?.trim() ?? "");
+    setEditAllowManualStops(Boolean(org.allowManualDeliveryStops));
+    setEditShowPlanTimeZone(Boolean(org.showPlanWizardTimeZone));
     setEditOpen(true);
   }
 
@@ -78,6 +86,8 @@ export function useOrganizationsListController() {
       id,
       name,
       description: desc.length ? desc : null,
+      allowManualDeliveryStops: editAllowManualStops,
+      showPlanWizardTimeZone: editShowPlanTimeZone,
     });
   }
 
@@ -96,6 +106,8 @@ export function useOrganizationsListController() {
       editOpen,
       editName,
       editDescription,
+      editAllowManualStops,
+      editShowPlanTimeZone,
       updatePending: updateMutation.isPending,
     },
     actions: {
@@ -113,6 +125,8 @@ export function useOrganizationsListController() {
       openEdit,
       setEditName,
       setEditDescription,
+      setEditAllowManualStops,
+      setEditShowPlanTimeZone,
       submitEdit,
     },
   };

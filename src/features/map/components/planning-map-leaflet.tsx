@@ -68,17 +68,38 @@ function MapClickLayer({
   return null;
 }
 
-function RouteHull({ layer }: { layer: RouteLayerModel }) {
+function RouteHull({
+  layer,
+  selected,
+  selectable,
+  onSelect,
+}: {
+  layer: RouteLayerModel;
+  selected: boolean;
+  selectable: boolean;
+  onSelect?: (routeId: string) => void;
+}) {
   if (!layer.hull?.length) return null;
   return (
     <Polygon
       positions={layer.hull}
       pathOptions={{
-        color: layer.color,
+        color: selected ? "#0f172a" : layer.color,
         fillColor: layer.color,
-        fillOpacity: 0.14,
-        weight: 1,
+        fillOpacity: selected ? 0.48 : 0.34,
+        weight: selected ? 4 : 2.5,
+        opacity: 1,
       }}
+      eventHandlers={
+        selectable && onSelect
+          ? {
+              click: (e) => {
+                L.DomEvent.stopPropagation(e);
+                onSelect(layer.routeId);
+              },
+            }
+          : undefined
+      }
     />
   );
 }
@@ -223,6 +244,11 @@ function StopMarkers({
 export type PlanningMapLeafletProps = {
   overlay: MapOverlayModel;
   onMapClick: (lat: number, lng: number) => void;
+  /** Selected route region — thicker polygon; only this route shows path + stops when `polygonPickMode` is on. */
+  selectedRouteId?: string | null;
+  onRouteSelect?: (routeId: string | null) => void;
+  /** When true, all hulls are shown; polylines/stops only for `selectedRouteId`. Click hull to select. */
+  polygonPickMode?: boolean;
   selectedDeliveryStopId?: string | null;
   /** When provided, assigned stops (on a route) can be clicked to select for route edits. */
   onDeliveryStopSelect?: (deliveryStopId: string | null) => void;
@@ -233,6 +259,9 @@ export type PlanningMapLeafletProps = {
 export function PlanningMapLeaflet({
   overlay,
   onMapClick,
+  selectedRouteId = null,
+  onRouteSelect,
+  polygonPickMode = false,
   selectedDeliveryStopId,
   onDeliveryStopSelect,
   routeStopEdit,
@@ -243,6 +272,19 @@ export function PlanningMapLeaflet({
   const useWms = getMapUseWms();
   const wmsLayers = getMapWmsLayers();
   const wmsFormat = getMapWmsFormat();
+
+  const showRouteDetail = (routeId: string) =>
+    !polygonPickMode || selectedRouteId === routeId;
+
+  const visibleStops = useMemo(() => {
+    if (!polygonPickMode) return overlay.stops;
+    if (!selectedRouteId) {
+      return overlay.stops.filter((s) => s.routeId == null);
+    }
+    return overlay.stops.filter((s) => s.routeId === selectedRouteId);
+  }, [overlay.stops, polygonPickMode, selectedRouteId]);
+
+  const polygonSelectable = polygonPickMode && Boolean(onRouteSelect);
 
   return (
     <div dir="ltr" className="size-full min-h-[420px]">
@@ -265,19 +307,28 @@ export function PlanningMapLeaflet({
         )}
         {hasBounds ? <FitBounds points={overlay.boundsPoints} /> : null}
         <MapClickLayer
-          onBackgroundClick={
-            onDeliveryStopSelect ? () => onDeliveryStopSelect(null) : undefined
-          }
+          onBackgroundClick={() => {
+            if (polygonPickMode) onRouteSelect?.(null);
+            onDeliveryStopSelect?.(null);
+          }}
           onMapClick={onMapClick}
         />
         {overlay.routes.map((layer) => (
-          <RouteHull key={`hull-${layer.routeId}`} layer={layer} />
+          <RouteHull
+            key={`hull-${layer.routeId}`}
+            layer={layer}
+            selected={selectedRouteId === layer.routeId}
+            selectable={polygonSelectable}
+            onSelect={onRouteSelect ?? undefined}
+          />
         ))}
-        {overlay.routes.map((layer) => (
-          <RouteLine key={`line-${layer.routeId}`} layer={layer} />
-        ))}
+        {overlay.routes
+          .filter((layer) => showRouteDetail(layer.routeId))
+          .map((layer) => (
+            <RouteLine key={`line-${layer.routeId}`} layer={layer} />
+          ))}
         <StopMarkers
-          stops={overlay.stops}
+          stops={visibleStops}
           selectedDeliveryStopId={selectedDeliveryStopId}
           onDeliveryStopSelect={onDeliveryStopSelect}
           routeStopEdit={routeStopEdit}

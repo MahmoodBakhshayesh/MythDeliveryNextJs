@@ -78,6 +78,8 @@ export function PlanningMapView({ viewState, actions }: PlanningMapViewModel) {
     geocodeSearchPending,
     mapRoutes,
     mapStops,
+    fleetVehicleIds,
+    fleetVehicles,
     stopEditBusy,
   } = viewState;
 
@@ -268,6 +270,8 @@ export function PlanningMapView({ viewState, actions }: PlanningMapViewModel) {
             polygonAlgorithm={polygonRegionAlgorithm}
             mapStops={mapStops}
             routes={mapRoutes ?? undefined}
+            fleetVehicleIds={fleetVehicleIds}
+            fleetVehicles={fleetVehicles ?? undefined}
             canShowMap={canShowMap}
             routeEditActive={routeEditActive}
             isConfirmed={Boolean(selectedPlanningWindow?.isConfirmed)}

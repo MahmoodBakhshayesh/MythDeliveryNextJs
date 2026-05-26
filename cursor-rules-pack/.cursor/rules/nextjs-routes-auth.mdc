@@ -1,0 +1,53 @@
+---
+description: App Router, route constants, auth guards
+globs: src/app/**/*,src/features/auth/**/*
+alwaysApply: false
+---
+
+# Routes and auth
+
+## App Router groups
+
+```text
+src/app/
+  layout.tsx           # root: fonts, providers
+  (auth)/              # login — no MainShell
+  (app)/               # authenticated — AuthGuard + MainShell
+    layout.tsx
+    <feature>/page.tsx
+```
+
+- **Guards** in layout: `AuthGuard`, role/route guards (`PostAuthRouteGuard`), not in every page.
+
+## Route path constants (recommended)
+
+Create **`src/lib/route-paths.ts`**:
+
+```typescript
+export const RoutePaths = {
+  home: "/dashboard",
+  fleet: "/fleet",
+  driverPortal: "/driver",
+  driverHistory: "/driver/history",
+} as const;
+```
+
+Use in `Link href`, `router.push`, and nav config — **no duplicated path strings**.
+
+## Dynamic routes
+
+- Next 15+: `params: Promise<{ id: string }>` and `await params` in server pages.
+- Prefer **client pages** when the whole feature needs Bearer token + Query (current myth-delivery pattern).
+
+## Post-login routing
+
+- Centralize **`getPostLoginRoute(roles)`** in lib — controllers call after login success.
+
+## Deep linking / RBAC
+
+- Hide nav items with role hooks (`useIsAdmin`, `useCanFleetOperations`, …).
+- **Also** enforce on API (backend); UI hiding is not security.
+
+## Optional: feature registry
+
+For large products, `src/config/features.ts` can list modules (id, title, href) for docs or placeholder nav — not required for CRUD apps.

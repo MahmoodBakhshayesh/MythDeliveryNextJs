@@ -4,7 +4,12 @@ export type GenerateDraftRoutesBody = {
   planningWindowId: string;
   spatialResolution?: number;
   planningStrategy?: string;
-  selectedDriverIds?: string[];
+  selectedVehicleIds?: string[];
+};
+
+export type AssignRouteDriversBody = {
+  planningWindowId: string;
+  assignments: { routeId: string; driverId: string }[];
 };
 
 export type GenerateDraftRoutesResponseDto = {
@@ -45,10 +50,17 @@ export const routePlanningRepository = {
           planningWindowId: body.planningWindowId,
           spatialResolution: body.spatialResolution ?? 8,
           planningStrategy: body.planningStrategy ?? "SpatialCell",
-          selectedDriverIds: body.selectedDriverIds ?? [],
+          selectedVehicleIds: body.selectedVehicleIds ?? [],
         }),
       },
     );
+  },
+
+  assignRouteDrivers(body: AssignRouteDriversBody) {
+    return apiJson<null>("/api/RoutePlanning/assign-route-drivers", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
   },
 
   getDriverInstructions(planningWindowId: string) {

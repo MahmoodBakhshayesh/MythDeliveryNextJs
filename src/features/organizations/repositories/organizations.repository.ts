@@ -27,7 +27,15 @@ export const organizationsRepository = {
     });
   },
 
-  update(id: string, body: { name: string; description?: string | null }) {
+  update(
+    id: string,
+    body: {
+      name: string;
+      description?: string | null;
+      allowManualDeliveryStops?: boolean;
+      showPlanWizardTimeZone?: boolean;
+    },
+  ) {
     return apiJson<OrganizationEntityBody>(`/api/organizations/${id}`, {
       method: "PUT",
       body: JSON.stringify(body),

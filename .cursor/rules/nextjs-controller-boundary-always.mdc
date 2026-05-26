@@ -1,0 +1,51 @@
+---
+description: Controller hooks, use cases, and repository boundaries
+alwaysApply: true
+---
+
+# Controller and data boundaries
+
+## Controller hook (`use*Controller`)
+
+**May:** `useQuery`, `useMutation`, `useState`, `useEffect`, `useRouter`, `toast`, `useTranslations`, call **use cases**.
+
+**Must not:** import repositories, call `apiJson`, or `fetch` directly.
+
+```typescript
+// ✅ controller
+const mutation = useMutation({
+  mutationFn: () => addVehicleUseCase(body),
+  onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.vehicles(orgId) }),
+});
+
+// ❌ controller
+await vehiclesRepository.add(body);
+```
+
+Export a **view model type** (`FleetPageViewModel`) when the view has many props — `viewState` + `actions` keeps views readable.
+
+## Use case
+
+- Async function; **one primary operation** per file.
+- Calls **repository**; checks `isAppSuccess` / unwraps `body`; throws on failure.
+- **No React hooks**, no browser APIs.
+
+## Repository
+
+- Only layer that calls **`apiJson`** (except auth refresh internals in `api-client`).
+- Returns `Promise<AppResponse<T>>` — do not throw HTTP errors here; let use case decide.
+
+## Page (`page.tsx`)
+
+```typescript
+export default function FleetPage() {
+  const vm = useFleetPageController();
+  return <FleetPageView {...vm} />;
+}
+```
+
+## Adding an API endpoint
+
+Repository method → use case → controller mutation/query → invalidate `queryKeys` → view feedback (toast / error).
+
+Do not skip the use case layer to save a file.

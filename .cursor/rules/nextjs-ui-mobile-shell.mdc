@@ -1,0 +1,66 @@
+---
+description: UI system, responsive shell, mobile-friendly web
+globs: src/components/**/*,src/app/**/*,src/features/**/views/**/*,src/features/**/components/**/*,**/*.css
+alwaysApply: false
+---
+
+# UI, layout, and mobile on web
+
+## Design system
+
+- Use **`@/components/ui/*`** (shadcn) for buttons, inputs, dialogs, sheets.
+- Use **`cn()`** from `@/lib/utils` for class merging.
+- Theme via **`next-themes`**; prefer semantic tokens (`bg-background`, `text-muted-foreground`) over raw hex in features.
+
+## App shell (reference: `MainShell`)
+
+| Breakpoint | Navigation |
+|------------|------------|
+| `md+` | Fixed sidebar (`aside`, ~256px) |
+| `< md` | Sticky header + **Sheet** drawer menu |
+
+Patterns to reuse:
+
+- `flex min-h-screen` root; `min-w-0 flex-1` on main column (prevents overflow bugs).
+- `sticky top-0 z-40` mobile header with backdrop blur.
+- `main`: `mx-auto w-full max-w-6xl flex-1 p-4 md:p-8` — readable desktop, full-width mobile.
+
+## Phone-first / consumer mode (brewlab pattern)
+
+When a screen should feel like a **mobile app on desktop**:
+
+```tsx
+<div className="mx-auto w-full max-w-[600px] min-h-dvh bg-background">
+  {/* single column, large touch targets */}
+</motion.div>
+```
+
+Use for driver/consumer flows; keep **ops dashboards** on wide `max-w-6xl`.
+
+## Touch and safe area
+
+- Minimum tap targets ~**44×44px** for primary actions on mobile.
+- `paddingTop: env(safe-area-inset-top)` on sticky headers when supporting PWA / notched phones.
+- Horizontal scroll rows: `overflow-x-auto` + `shrink-0` cards + `pb-1` for scrollbar clearance.
+
+## Views vs components
+
+- **Views** (`*.view.tsx`): page composition, translations, wiring VM to UI.
+- **Feature components**: dialogs, map layers, tables.
+- **Shared layout** (`components/layout/`): shell, guards, locale switcher.
+
+## Loading and empty states
+
+- Use **`Skeleton`** from ui for Query `isPending` / `isFetching`.
+- Card/list empty states with short copy + primary action (not blank screens).
+
+## i18n
+
+- User strings via **`next-intl`** `useTranslations('Namespace')` in views/controllers — keys in `messages/`.
+
+## Shared buttons / fields (optional)
+
+If many forms need identical chrome (mobile parity), add **`src/components/forms/`** or **`src/widgets/`**:
+
+- Primary CTA, icon pill, numeric stepper — shared modules with theme tokens.
+- Do not restyle shadcn `Input` per page; wrap once.

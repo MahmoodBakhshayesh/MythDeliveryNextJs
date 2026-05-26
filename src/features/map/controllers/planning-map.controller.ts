@@ -10,6 +10,7 @@ import { buildMapOverlay } from "@/features/map/lib/build-map-overlay";
 import { addDeliveryStopUseCase } from "@/features/map/usecases/add-delivery-stop.usecase";
 import { loadPlanningMapUseCase } from "@/features/map/usecases/load-planning-map.usecase";
 import { listPlanningWindowsUseCase } from "@/features/map/usecases/list-planning-windows.usecase";
+import { listVehiclesUseCase } from "@/features/fleet/usecases/list-vehicles.usecase";
 import { listOrganizationsUseCase } from "@/features/organizations/usecases/list-organizations.usecase";
 import { queryKeys } from "@/lib/query-keys";
 import {
@@ -59,6 +60,17 @@ export function usePlanningMapController() {
     queryKey: queryKeys.organizations,
     queryFn: () => listOrganizationsUseCase(),
   });
+
+  const vehiclesQuery = useQuery({
+    queryKey: queryKeys.vehicles(selectedOrgId || "_"),
+    enabled: !!selectedOrgId,
+    queryFn: () => listVehiclesUseCase(selectedOrgId),
+  });
+
+  const fleetVehicleIds = useMemo(
+    () => vehiclesQuery.data?.filter((v) => v.isActive).map((v) => v.id) ?? [],
+    [vehiclesQuery.data],
+  );
 
   const orgs = orgsQuery.data;
   const firstOrgId = orgs?.[0]?.id;
@@ -359,6 +371,8 @@ export function usePlanningMapController() {
       geocodeSearchPending: geocodeSearchMutation.isPending,
       mapRoutes: snapshotQuery.data?.routes ?? null,
       mapStops: snapshotQuery.data?.stops ?? null,
+      fleetVehicleIds,
+      fleetVehicles: vehiclesQuery.data ?? null,
       stopEditBusy:
         updateDeliveryStopMutation.isPending ||
         removeVisitFromRouteMutation.isPending ||

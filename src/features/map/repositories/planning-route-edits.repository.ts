@@ -8,14 +8,20 @@ export type MovePlanningRouteStopBody = {
 export type MergePlanningRoutesBody = {
   sourceRouteId: string;
   targetRouteId: string;
-  /** Driver who owns the merged (surviving) route. Omit to keep the target route’s driver. */
-  resultDriverId?: string;
+  resultVehicleId?: string;
 };
 
 export type SplitPlanningRouteBody = {
   splitBeforeRouteStopId: string;
-  /** Driver for the new tail route. Omit to keep the same driver as the route being split. */
-  newRouteDriverId?: string;
+  newRouteVehicleId?: string;
+};
+
+export type SplitPlanningRouteByProximityBody = {
+  routeId: string;
+  partCount: number;
+  vehicleIdsPerCluster?: string[];
+  /** Current wizard step-2 vehicle selection (prunes stale routes server-side). */
+  planVehicleIds?: string[];
 };
 
 export type RemovePlanningRouteVisitBody = {
@@ -46,6 +52,19 @@ export const planningRouteEditsRepository = {
   splitRoute(planningWindowId: string, body: SplitPlanningRouteBody) {
     return apiJson<unknown>(
       `/api/planning-windows/${planningWindowId}/route-edits/split-route`,
+      {
+        method: "POST",
+        body: JSON.stringify(body),
+      },
+    );
+  },
+
+  splitRouteByProximity(
+    planningWindowId: string,
+    body: SplitPlanningRouteByProximityBody,
+  ) {
+    return apiJson<unknown>(
+      `/api/planning-windows/${planningWindowId}/route-edits/split-route-by-proximity`,
       {
         method: "POST",
         body: JSON.stringify(body),

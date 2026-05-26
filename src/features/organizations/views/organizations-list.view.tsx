@@ -39,6 +39,8 @@ export function OrganizationsListView({
     editOpen,
     editName,
     editDescription,
+    editAllowManualStops,
+    editShowPlanTimeZone,
     updatePending,
   } = viewState;
 
@@ -165,6 +167,22 @@ export function OrganizationsListView({
                 className="resize-y"
               />
             </div>
+            <label className="flex cursor-pointer items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={editAllowManualStops}
+                onChange={(e) => actions.setEditAllowManualStops(e.target.checked)}
+              />
+              {t("allowManualDeliveryStops")}
+            </label>
+            <label className="flex cursor-pointer items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={editShowPlanTimeZone}
+                onChange={(e) => actions.setEditShowPlanTimeZone(e.target.checked)}
+              />
+              {t("showPlanWizardTimeZone")}
+            </label>
           </div>
           <DialogFooter className="gap-2 sm:justify-end">
             <Button

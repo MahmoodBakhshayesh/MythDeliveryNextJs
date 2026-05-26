@@ -1,0 +1,44 @@
+---
+description: Performance — TanStack Query, bundles, lists, rendering
+globs: src/features/**/*,src/app/**/*,src/providers/**/*
+alwaysApply: false
+---
+
+# Performance and data fetching
+
+## TanStack Query defaults
+
+- Set sensible **`staleTime`** in `AppProviders` (e.g. 30s) to reduce refetch noise.
+- **`enabled: !!id`** on queries that need a prerequisite (org id, window id).
+- **`queryKey`** must include all variables that affect the response (orgId, filters).
+
+## Invalidation
+
+- After mutations: `invalidateQueries` with the **narrowest** key that refreshes the UI.
+- Avoid blanket `invalidateQueries()` unless logout or global refresh.
+
+## Controllers vs Query placement
+
+- Keep **fetch logic in use cases**; controllers only wire `queryFn: () => useCase(args)`.
+- Do not duplicate the same query in sibling components — lift to controller or shared hook.
+
+## Lists and heavy UI
+
+- Virtualize long tables when row count > ~100 (or paginate server-side).
+- **Dynamic import** map/chart libraries (`next/dynamic`, `ssr: false`) — see Leaflet/map features.
+- Split large feature components; colocate `lib/` pure functions for expensive geometry.
+
+## Rendering
+
+- Mark client boundaries with **`"use client"`** only where needed (controllers, views with hooks, interactive UI).
+- Prefer **server layouts** for static shell when possible; keep data fetching client-side if API needs Bearer token.
+- Memoize expensive **pure** child props only when profiling shows need — don’t blanket `memo` everything.
+
+## Images and assets
+
+- Use `next/image` for static marketing assets; maps/canvas exceptions documented in feature.
+
+## Mobile performance
+
+- Avoid refetch-on-focus storms on mobile (`refetchOnWindowFocus: false` default is OK for ops dashboards).
+- Debounce search/filter inputs that trigger queries (300–400ms).
