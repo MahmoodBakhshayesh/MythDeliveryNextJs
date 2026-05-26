@@ -33,6 +33,7 @@ export type UserDirectoryEntry = {
   isLockedOut: boolean;
 };
 
+
 export type RoleOption = {
   id: string;
   name: string;
