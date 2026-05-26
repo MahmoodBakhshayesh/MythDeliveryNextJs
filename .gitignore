@@ -21,6 +21,10 @@ dist/
 .turbo/
 .parcel-cache/
 
+# Local Docker image exports (do not commit)
+*.tar
+mythdelivery-web.tar
+
 # misc
 .DS_Store
 *.pem
