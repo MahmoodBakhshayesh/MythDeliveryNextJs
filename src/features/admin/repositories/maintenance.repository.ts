@@ -4,6 +4,7 @@ export type OperationalClearBody = {
   message?: string;
 };
 
+
 export const maintenanceRepository = {
   clearOperationalData() {
     return apiJson<OperationalClearBody>(
